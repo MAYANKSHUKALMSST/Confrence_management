@@ -1,4 +1,4 @@
-import initSqlJs from 'sql.js';
+import Database from 'better-sqlite3';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import path from 'path';
@@ -14,39 +14,15 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// ── Initialize sql.js and load/create database ─────────────────────────────
+const db = new Database(DB_PATH);
+console.log('🗄️ SQLite DB initialized at', DB_PATH);
 
-const SQL = await initSqlJs();
+// No periodic save needed; better-sqlite3 writes directly to file
 
-let db;
-if (fs.existsSync(DB_PATH)) {
-  const buffer = fs.readFileSync(DB_PATH);
-  db = new SQL.Database(buffer);
-  console.log('📂 Loaded existing database from', DB_PATH);
-} else {
-  db = new SQL.Database();
-  console.log('🆕 Created new database');
-}
-
-// ── Save helper ────────────────────────────────────────────────────────────
-
-function saveDb() {
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
-}
-
-// Auto-save every 5 seconds
-setInterval(saveDb, 5000);
-
-// Save on process exit
-process.on('exit', saveDb);
-process.on('SIGINT', () => { saveDb(); process.exit(0); });
-process.on('SIGTERM', () => { saveDb(); process.exit(0); });
 
 // ── Create tables ──────────────────────────────────────────────────────────
 
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -55,11 +31,12 @@ db.run(`
     department TEXT NOT NULL DEFAULT 'Technical',
     role TEXT NOT NULL DEFAULT 'user',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    avatar_url TEXT DEFAULT ''
   )
 `);
 
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS bookings (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -71,11 +48,13 @@ db.run(`
     end_time TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    recurrence_id TEXT,
+    recurrence_rule TEXT
   )
 `);
 
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
@@ -86,38 +65,49 @@ db.run(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS email_settings (
+    id TEXT PRIMARY KEY,
+    smtp_host TEXT NOT NULL,
+    smtp_port INTEGER NOT NULL,
+    email TEXT NOT NULL,
+    app_password TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS rooms (
+    id TEXT PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    capacity INTEGER NOT NULL DEFAULT 10,
+    equipment TEXT NOT NULL DEFAULT '',
+    image_url TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
 // ── Wrapper helpers to match better-sqlite3-like API ───────────────────────
 
 const dbHelper = {
   // Run a query that modifies data (INSERT, UPDATE, DELETE)
   run(sql, params = []) {
-    db.run(sql, params);
-    saveDb();
+    const stmt = db.prepare(sql);
+    stmt.run(params);
   },
 
   // Get a single row
   get(sql, params = []) {
     const stmt = db.prepare(sql);
-    stmt.bind(params);
-    if (stmt.step()) {
-      const row = stmt.getAsObject();
-      stmt.free();
-      return row;
-    }
-    stmt.free();
-    return undefined;
+    const row = stmt.get(params);
+    return row || undefined;
   },
 
   // Get all rows
   all(sql, params = []) {
     const stmt = db.prepare(sql);
-    stmt.bind(params);
-    const results = [];
-    while (stmt.step()) {
-      results.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return results;
+    const rows = stmt.all(params);
+    return rows;
   },
 };
 
@@ -134,6 +124,25 @@ if (!existingAdmin) {
   console.log('✅ Admin account seeded (email: admin, password: Admin@245)');
 }
 
-saveDb();
+// ── Seed initial rooms ──────────────────────────────────────────────────────
+
+const existingRooms = dbHelper.all('SELECT name FROM rooms');
+if (existingRooms.length === 0) {
+  const rooms = [
+    { name: 'Liberty', capacity: 20, equipment: 'Projector, Whiteboard, Video Conference Kit, AC', image_url: '/liberty_room.png' },
+    { name: 'Unity', capacity: 12, equipment: 'Whiteboard, Large Monitor, AC', image_url: '/unity_room.png' },
+    { name: 'Banyan', capacity: 6, equipment: 'Small Monitor, AC', image_url: '/banyan_room.png' }
+  ];
+
+  rooms.forEach(r => {
+    dbHelper.run(
+      'INSERT INTO rooms (id, name, capacity, equipment, image_url) VALUES (?, ?, ?, ?, ?)',
+      [randomUUID(), r.name, r.capacity, r.equipment, r.image_url]
+    );
+  });
+  console.log('✅ Initial rooms seeded.');
+}
+
+
 
 export default dbHelper;

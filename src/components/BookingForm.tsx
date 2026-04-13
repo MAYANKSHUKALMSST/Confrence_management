@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DEPARTMENTS, ROOMS, type Department, type RoomName, type Booking } from '@/lib/types';
+import { DEPARTMENTS, type Department, type Booking } from '@/lib/types';
 import { useBookings } from '@/hooks/useBookings';
+import { useRooms } from '@/hooks/useRooms';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Edit2 } from 'lucide-react';
+import { Plus, Edit2, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { RRule, Frequency } from 'rrule';
 
 interface BookingFormProps {
   mode?: 'create' | 'edit';
@@ -26,13 +28,15 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
   const initStart = initialData ? new Date(initialData.start_time).toTimeString().substring(0,5) : '';
   const initEnd = initialData ? new Date(initialData.end_time).toTimeString().substring(0,5) : '';
 
-  const [room, setRoom] = useState<RoomName>(initialData?.room ?? 'Liberty');
+  const { rooms } = useRooms();
+  const [room, setRoom] = useState(initialData?.room ?? 'Liberty');
   const [title, setTitle] = useState(initialData?.title ?? '');
   const [department, setDepartment] = useState<Department>(initialData?.department ?? profile?.department ?? 'Technical');
   const [date, setDate] = useState(initDate);
   const [startTime, setStartTime] = useState(initStart);
   const [endTime, setEndTime] = useState(initEnd);
   const [attendees, setAttendees] = useState(initialData?.attendees ?? '');
+  const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly'>('none');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +68,24 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
       return;
     }
 
+    let recurrence_rule = null;
+    if (recurrence !== 'none') {
+      const freqMap = {
+        daily: Frequency.DAILY,
+        weekly: Frequency.WEEKLY,
+        biweekly: Frequency.WEEKLY,
+        monthly: Frequency.MONTHLY,
+      };
+      
+      const rule = new RRule({
+        freq: freqMap[recurrence as keyof typeof freqMap],
+        interval: recurrence === 'biweekly' ? 2 : 1,
+        dtstart: startDt,
+        count: 10, // Default to 10 instances max
+      });
+      recurrence_rule = rule.toString();
+    }
+
     const payload = {
       room,
       title,
@@ -71,6 +93,7 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
       attendees,
       start_time: startDt.toISOString(),
       end_time: endDt.toISOString(),
+      recurrence_rule
     };
 
     if (mode === 'edit' && initialData) {
@@ -115,10 +138,10 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div>
             <Label>Room</Label>
-            <Select value={room} onValueChange={v => setRoom(v as RoomName)}>
+            <Select value={room} onValueChange={v => setRoom(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ROOMS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                {rooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Cap: {r.capacity})</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -153,6 +176,25 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
               <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
             </div>
           </div>
+
+          {!initialData && (
+            <div className="bg-muted/30 p-3 rounded-lg border space-y-2">
+              <Label className="flex items-center gap-2">
+                <RotateCw className="w-3.5 h-3.5" />
+                Repeat Meeting
+              </Label>
+              <Select value={recurrence} onValueChange={(v: any) => setRecurrence(v)}>
+                <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Does not repeat</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Every 2 weeks</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={createBooking.isPending || updateBooking.isPending}>
             {createBooking.isPending || updateBooking.isPending ? 'Submitting...' : mode === 'edit' ? 'Save Changes' : 'Submit Request'}
           </Button>

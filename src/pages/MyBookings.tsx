@@ -5,8 +5,9 @@ import { useBookings } from '@/hooks/useBookings';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ClipboardList, Edit2, Trash2, MoreHorizontal } from 'lucide-react';
+import { ClipboardList, Edit2, Trash2, MoreHorizontal, CalendarPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { downloadIcs } from '@/lib/calendar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -95,6 +96,12 @@ const MyBookings = () => {
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
                             </DropdownMenuItem>
+                            {b.status === 'confirmed' && (
+                              <DropdownMenuItem onClick={() => downloadIcs(b)}>
+                                <CalendarPlus className="mr-2 h-4 w-4" />
+                                Add to Calendar
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

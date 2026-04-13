@@ -34,25 +34,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const loadSession = async () => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      setUser(null);
-      setProfile(null);
-      setRole('user');
-      setLoading(false);
-      return;
-    }
-
+    // Session is validated via HttpOnly cookie; no local token needed
     const { data, error } = await api.auth.getSession();
     if (error || !data) {
-      clearToken();
       setUser(null);
       setProfile(null);
       setRole('user');
       setLoading(false);
       return;
     }
-
     const session = data as any;
     setUser(session.user);
     setProfile(session.profile as Profile);
@@ -65,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    clearToken();
+    await api.auth.logout(); // clears HttpOnly cookie on server
     setUser(null);
     setProfile(null);
     setRole('user');

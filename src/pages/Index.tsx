@@ -3,7 +3,7 @@ import WeeklyCalendar from '@/components/WeeklyCalendar';
 import BookingForm from '@/components/BookingForm';
 import { useBookings } from '@/hooks/useBookings';
 import { useAuth } from '@/hooks/useAuth';
-import { ROOMS } from '@/lib/types';
+import { useRooms } from '@/hooks/useRooms';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,11 @@ const itemVariants = {
 };
 
 const Index = () => {
-  const { bookings, isLoading, updateBookingStatus } = useBookings();
+  const { bookings, isLoading: bookingsLoading, updateBookingStatus } = useBookings();
+  const { rooms, isLoading: roomsLoading } = useRooms();
   const { isAdmin } = useAuth();
+
+  const isLoading = bookingsLoading || roomsLoading;
 
   const pendingBookings = bookings.filter(b => b.status === 'pending');
 
@@ -111,9 +114,10 @@ const Index = () => {
             animate="visible"
             className="space-y-6"
           >
-            {ROOMS.map(room => (
-              <motion.div key={room} variants={itemVariants}>
-                <WeeklyCalendar bookings={bookings} room={room} />
+          >
+            {rooms.map(room => (
+              <motion.div key={room.id} variants={itemVariants}>
+                <WeeklyCalendar bookings={bookings} room={room.name} />
               </motion.div>
             ))}
           </motion.div>

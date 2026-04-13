@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '@/integrations/supabase/client';
 import { format, isToday, isTomorrow, addDays, startOfDay, endOfDay } from 'date-fns';
-import type { Booking, RoomName } from '@/lib/types';
-import { ROOMS } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { useRooms } from '@/hooks/useRooms';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { motion } from 'framer-motion';
 import { MonitorPlay, Users, CalendarCheck2 } from 'lucide-react';
@@ -31,6 +30,7 @@ const RoomDisplay = () => {
   const roomParam = searchParams.get('room') as RoomName | null;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [now, setNow] = useState(new Date());
+  const { rooms: dbRooms, isLoading: roomsLoading } = useRooms();
 
   // Tick every 15 seconds to keep "now" current
   useEffect(() => {
@@ -51,7 +51,10 @@ const RoomDisplay = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const rooms = roomParam ? [roomParam] : ROOMS;
+  const rooms = useMemo(() => {
+    if (roomParam) return [roomParam];
+    return dbRooms.map(r => r.name);
+  }, [roomParam, dbRooms]);
 
   const todayBookings = useMemo(
     () => bookings.filter(b => isToday(new Date(b.start_time))),
@@ -74,12 +77,12 @@ const RoomDisplay = () => {
     return start > now;
   };
 
-  const getRoomBookings = (room: RoomName, list: Booking[]) =>
-    list.filter(b => b.room === room);
+  const getRoomBookings = (roomName: string, list: Booking[]) =>
+    list.filter(b => b.room === roomName);
 
-  const handleRoomClick = async (room: RoomName) => {
-    if (roomParam === room) return;
-    setSearchParams({ room });
+  const handleRoomClick = async (roomName: string) => {
+    if (roomParam === roomName) return;
+    setSearchParams({ room: roomName });
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen();

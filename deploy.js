@@ -14,10 +14,10 @@ async function deploy() {
     });
     console.log('✅ Connected.');
 
-    console.log('📤 Uploading roombook.tar.gz...');
+    console.log('📤 Uploading roombook.tar...');
     await ssh.putFile(
-      path.resolve(process.cwd(), 'roombook.tar.gz'),
-      '/tmp/roombook.tar.gz'
+      path.resolve(process.cwd(), 'roombook.tar'),
+      '/tmp/roombook.tar'
     );
     console.log('✅ Upload complete.');
 
@@ -25,10 +25,12 @@ async function deploy() {
     
     // Create directory if it doesn't exist, remove old code, extract new code
     const setupCommand = `
+      set -e
       mkdir -p ~/roombook
       cd ~/roombook
-      # Extract files
-      tar -xzf /tmp/roombook.tar.gz
+      
+      echo "Extracting files..."
+      tar -xf /tmp/roombook.tar || { echo "Tar extraction failed"; exit 1; }
       
       echo "Installing Node.js 20..."
       echo "9044472544" | sudo -S bash -c "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -"
@@ -37,12 +39,19 @@ async function deploy() {
       echo "9044472544" | sudo -S npm install -g pm2
 
       echo "Setting up environment..."
-      echo "JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")" > .env
-      echo "PORT=3001" >> .env
+      if [ ! -f .env ]; then
+        echo "JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")" > .env
+        echo "PORT=3001" >> .env
+        echo "NODE_ENV=production" >> .env
+        echo "COOKIE_SECURE=false" >> .env # Set to true once SSL is enabled and accessing via https://
+      fi
 
       echo "Installing project dependencies..."
       npm install
       
+      echo "Fixing permissions..."
+      chmod +x node_modules/.bin/* || true
+
       echo "Building project..."
       npm run build
 
@@ -52,34 +61,24 @@ async function deploy() {
       pm2 save
       
       echo "Configuring automatic boot startup..."
-      echo "9044472544" | sudo -S env PATH=$PATH:/usr/bin pm2 startup systemd -u mayank --hp /home/mayank
+      echo "9044472544" | sudo -S env PATH=$PATH:/usr/bin pm2 startup systemd -u mayank --hp /home/mayank | grep "sudo" | bash || true
 
       echo "Configuring firewall..."
-      echo "9044472544" | sudo -S ufw allow 3001/tcp
-      echo "9044472544" | sudo -S ufw allow 80/tcp
+      echo "9044472544" | sudo -S ufw allow 3001/tcp || true
+      echo "9044472544" | sudo -S ufw allow 80/tcp || true
 
       echo "Setting up Nginx..."
       echo "9044472544" | sudo -S apt-get install -y nginx
 
-      # Configure Nginx for RoomBook
-      NGINX_CONF="server {
-          listen 80;
-          server_name 172.16.100.24 _;
-
-          location / {
-              proxy_pass http://localhost:3001;
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade \\$http_upgrade;
-              proxy_set_header Connection 'upgrade';
-              proxy_set_header Host \\$host;
-              proxy_cache_bypass \\$http_upgrade;
-          }
-      }"
-
-      echo "9044472544" | sudo -S bash -c "echo \\"$NGINX_CONF\\" > /etc/nginx/sites-available/roombook"
+      # Apply Nginx config from project
+      echo "9044472544" | sudo -S cp ~/roombook/nginx.conf /etc/nginx/sites-available/roombook
       echo "9044472544" | sudo -S rm -f /etc/nginx/sites-enabled/default
       echo "9044472544" | sudo -S ln -sf /etc/nginx/sites-available/roombook /etc/nginx/sites-enabled/
       
+      echo "Testing Nginx config..."
+      echo "9044472544" | sudo -S nginx -t
+      
+      echo "Restarting Nginx..."
       echo "9044472544" | sudo -S systemctl restart nginx
       echo "Nginx configured successfully."
     `;

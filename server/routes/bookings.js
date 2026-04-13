@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { randomUUID } from 'crypto';
+import sanitizeHtml from 'sanitize-html';
+import rateLimit from 'express-rate-limit';
 import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { sendEmail } from '../utils/email.js';
+import { format, addHours, parseISO } from 'date-fns';
+import { RRule } from 'rrule';
 
 const router = Router();
 
@@ -84,25 +89,130 @@ router.get('/confirmed', (req, res) => {
 });
 
 // ── Create booking ─────────────────────────────────────────────────────────
+const bookingLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 5, // 5 bookings per minute
+  message: { error: 'Booking creation rate limit exceeded. Please wait a moment.' }
+});
 
-router.post('/', authenticateToken, (req, res) => {
+// ── Helper: Check for booking overlaps ─────────────────────────────────────
+const hasOverlap = (room, start, end, excludeId = null) => {
+  const query = excludeId 
+    ? "SELECT id FROM bookings WHERE room = ? AND status != 'rejected' AND id != ? AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?))"
+    : "SELECT id FROM bookings WHERE room = ? AND status != 'rejected' AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?))";
+  
+  const params = excludeId 
+    ? [room, excludeId, end, start, end, start, start, end]
+    : [room, end, start, end, start, start, end];
+    
+  return !!db.get(query, params);
+};
+
+router.post('/', authenticateToken, bookingLimiter, (req, res) => {
   try {
-    const { room, title, department, attendees, start_time, end_time } = req.body;
+    let { room, title, department, attendees, start_time, end_time } = req.body;
     const user = req.user;
+
+    // Time Validation
+    const now = new Date().toISOString();
+    if (start_time < now) {
+      return res.status(400).json({ error: 'Start time must be in the future' });
+    }
+    if (end_time <= start_time) {
+      return res.status(400).json({ error: 'End time must be after start time' });
+    }
+
+    // Overlap Check
+    if (hasOverlap(room, start_time, end_time)) {
+      return res.status(400).json({ error: 'Room is already booked for this time slot' });
+    }
+
+    // Sanitization
+    const sanitizeOptions = { allowedTags: [], allowedAttributes: {} };
+    room = sanitizeHtml(room, sanitizeOptions);
+    title = sanitizeHtml(title, sanitizeOptions);
+    department = sanitizeHtml(department, sanitizeOptions);
+    attendees = sanitizeHtml(attendees || '', sanitizeOptions);
 
     if (!room || !title || !department || !start_time || !end_time) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const id = randomUUID();
-    const now = new Date().toISOString();
+    // Dynamic Room Check
+    const roomExists = db.get('SELECT name FROM rooms WHERE name = ?', [room]);
+    if (!roomExists) {
+      return res.status(400).json({ error: 'Invalid room selected' });
+    }
 
-    db.run(
-      'INSERT INTO bookings (id, user_id, room, title, department, attendees, start_time, end_time, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, user.id, room, title, department, attendees || '', start_time, end_time, 'pending', now, now]
-    );
+    const { recurrence_rule } = req.body;
+    const recurrence_id = recurrence_rule ? randomUUID() : null;
+    let bookingsToCreate = [{ start: start_time, end: end_time }];
 
-    const booking = db.get('SELECT * FROM bookings WHERE id = ?', [id]);
+    if (recurrence_rule) {
+      try {
+        const rule = RRule.fromString(recurrence_rule);
+        // Limit to 3 months
+        const limitDate = new Date();
+        limitDate.setMonth(limitDate.getMonth() + 3);
+        
+        const dates = rule.between(new Date(start_time), limitDate);
+        const duration = new Date(end_time).getTime() - new Date(start_time).getTime();
+
+        bookingsToCreate = dates.map(date => {
+          const s = date.toISOString();
+          const e = new Date(date.getTime() + duration).toISOString();
+          return { start: s, end: e };
+        });
+      } catch (err) {
+        return res.status(400).json({ error: 'Invalid recurrence rule' });
+      }
+    }
+
+    const createdBookings = [];
+    for (const bTime of bookingsToCreate) {
+      // Check overlap for each slot in the series
+      if (hasOverlap(room, bTime.start, bTime.end)) {
+        if (recurrence_rule) continue; // Skip clashing instances in a series
+        return res.status(400).json({ error: 'Room is already booked for this time slot' });
+      }
+
+      const id = randomUUID();
+      db.run(
+        'INSERT INTO bookings (id, user_id, room, title, department, attendees, start_time, end_time, status, created_at, updated_at, recurrence_id, recurrence_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [id, user.id, room, title, department, attendees || '', bTime.start, bTime.end, 'pending', now, now, recurrence_id, recurrence_rule || null]
+      );
+      createdBookings.push(db.get('SELECT * FROM bookings WHERE id = ?', [id]));
+    }
+
+    if (createdBookings.length === 0) {
+      return res.status(400).json({ error: 'Could not create any bookings in the series due to conflicts' });
+    }
+
+    const booking = createdBookings[0];
+    
+    // Broadcast update
+    req.app.get('io').emit('booking_created', { bookings: createdBookings });
+
+    // Send acknowledgement email
+    const startStr = format(new Date(booking.start_time), 'PPP p');
+    const endStr = format(new Date(booking.end_time), 'p');
+    
+    sendEmail({
+      to: user.email,
+      subject: `Booking Request: ${booking.title}`,
+      text: `Hello ${user.full_name},\n\nYour booking request for "${booking.title}" in room "${booking.room}" has been received and is currently pending approval.\n\nDetails:\n- Room: ${booking.room}\n- Time: ${startStr} - ${endStr}\n- Status: Pending\n\nWe will notify you once it's reviewed.\n\nBest regards,\nRoom Booking System`,
+      html: `
+        <h3>Hello ${user.full_name},</h3>
+        <p>Your booking request for <strong>"${booking.title}"</strong> in room <strong>"${booking.room}"</strong> has been received and is currently pending approval.</p>
+        <p><strong>Details:</strong><br>
+        - <strong>Room:</strong> ${booking.room}<br>
+        - <strong>Time:</strong> ${startStr} - ${endStr}<br>
+        - <strong>Status:</strong> Pending</p>
+        <p>We will notify you once it's reviewed.</p>
+        <p>Best regards,<br>Room Booking System</p>
+      `
+    }).catch(err => console.error('Failed to send booking creation email:', err));
+
     res.json(booking);
   } catch (err) {
     console.error('Create booking error:', err);
@@ -129,6 +239,11 @@ router.patch('/:id/status', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
+    // Protection against redundant notifications
+    if (booking.status === status) {
+      return res.json(booking);
+    }
+
     const now = new Date().toISOString();
     db.run(
       'UPDATE bookings SET status = ?, updated_at = ? WHERE id = ?',
@@ -146,7 +261,32 @@ router.patch('/:id/status', authenticateToken, (req, res) => {
     );
 
     const updated = db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    const requester = db.get('SELECT email, full_name FROM users WHERE id = ?', [booking.user_id]);
+
+    if (requester) {
+      const startStr = format(new Date(booking.start_time), 'PPP p');
+      const endStr = format(new Date(booking.end_time), 'p');
+      const statusTitle = status === 'confirmed' ? 'Approved' : 'Rejected';
+
+      sendEmail({
+        to: requester.email,
+        subject: `Booking ${statusTitle}: ${booking.title}`,
+        text: `Hello ${requester.full_name},\n\nYour booking request for "${booking.title}" in room "${booking.room}" has been ${status === 'confirmed' ? 'approved' : 'rejected'}.\n\nDetails:\n- Room: ${booking.room}\n- Time: ${startStr} - ${endStr}\n- Status: ${statusTitle}\n\nBest regards,\nRoom Booking System`,
+        html: `
+          <h3>Hello ${requester.full_name},</h3>
+          <p>Your booking request for <strong>"${booking.title}"</strong> in room <strong>"${booking.room}"</strong> has been <strong>${status === 'confirmed' ? 'approved' : 'rejected'}</strong>.</p>
+          <p><strong>Details:</strong><br>
+          - <strong>Room:</strong> ${booking.room}<br>
+          - <strong>Time:</strong> ${startStr} - ${endStr}<br>
+          - <strong>Status:</strong> ${statusTitle}</p>
+          <p>Best regards,<br>Room Booking System</p>
+        `
+      }).catch(err => console.error('Failed to send status update email:', err));
+    }
+
     res.json(updated);
+    // Broadcast update
+    req.app.get('io').emit('booking_updated', updated);
   } catch (err) {
     console.error('Update booking status error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -157,10 +297,22 @@ router.patch('/:id/status', authenticateToken, (req, res) => {
 router.put('/:id', authenticateToken, (req, res) => {
   try {
     const user = req.user;
-    const { room, title, department, attendees, start_time, end_time } = req.body;
+    let { room, title, department, attendees, start_time, end_time } = req.body;
+
+    // Sanitization
+    const sanitizeOptions = { allowedTags: [], allowedAttributes: {} };
+    room = sanitizeHtml(room, sanitizeOptions);
+    title = sanitizeHtml(title, sanitizeOptions);
+    department = sanitizeHtml(department, sanitizeOptions);
+    attendees = sanitizeHtml(attendees || '', sanitizeOptions);
 
     if (!room || !title || !department || !start_time || !end_time) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Time Validation
+    if (end_time <= start_time) {
+      return res.status(400).json({ error: 'End time must be after start time' });
     }
 
     const booking = db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
@@ -168,18 +320,28 @@ router.put('/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    if (booking.user_id !== user.id && user.role !== 'admin') {
-      return res.status(403).json({ error: 'Not authorized to modify this booking' });
+    // Status Lockdown: If a user modifies a confirmed/rejected booking, reset to pending
+    let newStatus = booking.status;
+    if (user.role !== 'admin' && (booking.room !== room || booking.start_time !== start_time || booking.end_time !== end_time)) {
+      newStatus = 'pending';
+    }
+
+    // Overlap Check (Excluding self)
+    if (hasOverlap(room, start_time, end_time, req.params.id)) {
+      return res.status(400).json({ error: 'Room is already booked for this time slot' });
     }
 
     const now = new Date().toISOString();
     db.run(
-      'UPDATE bookings SET room = ?, title = ?, department = ?, attendees = ?, start_time = ?, end_time = ?, updated_at = ? WHERE id = ?',
-      [room, title, department, attendees || '', start_time, end_time, now, req.params.id]
+      'UPDATE bookings SET room = ?, title = ?, department = ?, attendees = ?, start_time = ?, end_time = ?, status = ?, updated_at = ? WHERE id = ?',
+      [room, title, department, attendees || '', start_time, end_time, newStatus, now, req.params.id]
     );
 
     const updated = db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
     res.json(updated);
+
+    // Broadcast update
+    req.app.get('io').emit('booking_updated', updated);
   } catch (err) {
     console.error('Update booking error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -205,6 +367,9 @@ router.delete('/:id', authenticateToken, (req, res) => {
     
     db.run('DELETE FROM bookings WHERE id = ?', [req.params.id]);
     res.json({ success: true });
+
+    // Broadcast update
+    req.app.get('io').emit('booking_deleted', { id: req.params.id });
   } catch (err) {
     console.error('Delete booking error:', err);
     res.status(500).json({ error: 'Internal server error' });

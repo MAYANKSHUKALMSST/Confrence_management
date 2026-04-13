@@ -2,15 +2,16 @@
 const API_BASE = '/api';
 
 function getToken(): string | null {
-  return localStorage.getItem('auth_token');
+  // Tokens are now stored in HttpOnly cookies; no client‑side access
+  return null;
 }
 
 export function setToken(token: string) {
-  localStorage.setItem('auth_token', token);
+  // No‑op: token is managed by HttpOnly cookie set by server
 }
 
 export function clearToken() {
-  localStorage.removeItem('auth_token');
+  // No‑op: clearing cookie handled by server logout endpoint
 }
 
 function authHeaders(): Record<string, string> {
@@ -25,6 +26,7 @@ async function request<T>(
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       ...options,
+      credentials: 'include', // send HttpOnly cookie
       headers: {
         'Content-Type': 'application/json',
         ...authHeaders(),
@@ -54,6 +56,8 @@ export const api = {
 
     getSession: () =>
       request('/auth/session'),
+    logout: () =>
+      request('/auth/logout', { method: 'POST' }),
   },
 
   bookings: {
@@ -100,5 +104,26 @@ export const api = {
 
   profiles: {
     get: (id: string) => request(`/profiles/${id}`),
+    update: (id: string, data: any) => request(`/profiles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
+
+  emailSettings: {
+    get: () => request('/email-settings'),
+    update: (settings: { smtp_host: string; smtp_port: number; email: string; app_password?: string }) =>
+      request('/email-settings', { method: 'POST', body: JSON.stringify(settings) }),
+    delete: () => request('/email-settings', { method: 'DELETE' }),
+    test: (settings: { smtp_host: string; smtp_port: number; email: string; app_password?: string }) =>
+      request('/email-settings/test', { method: 'POST', body: JSON.stringify(settings) }),
+  },
+
+  rooms: {
+    list: () => request('/rooms'),
+    create: (room: any) => request('/rooms', { method: 'POST', body: JSON.stringify(room) }),
+    update: (id: string, room: any) => request(`/rooms/${id}`, { method: 'PUT', body: JSON.stringify(room) }),
+    delete: (id: string) => request(`/rooms/${id}`, { method: 'DELETE' }),
+  },
+
+  analytics: {
+    get: () => request('/analytics'),
   },
 };

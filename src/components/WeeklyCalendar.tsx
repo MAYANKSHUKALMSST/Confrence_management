@@ -10,7 +10,7 @@ const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8AM - 7PM
 
 interface WeeklyCalendarProps {
   bookings: Booking[];
-  room: RoomName;
+  room: string;
 }
 
 const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {

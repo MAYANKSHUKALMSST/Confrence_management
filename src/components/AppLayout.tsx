@@ -5,7 +5,9 @@ import { Building2, Calendar, ClipboardList, LogOut, Shield } from 'lucide-react
 import NotificationBell from '@/components/NotificationBell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NavLink } from 'react-router-dom';
+import ProfileSettings from '@/components/ProfileSettings';
 import { cn } from '@/lib/utils';
+import { User as UserIcon, Settings } from 'lucide-react';
 
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const { user, profile, isAdmin, loading, signOut } = useAuth();
@@ -39,6 +41,22 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           </div>
           <span className="font-heading font-bold text-lg">Conference Room Booking</span>
         </div>
+
+        <div className="p-4 mx-2 mt-2 bg-white/5 rounded-xl border border-white/5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-muted border border-white/10 overflow-hidden shrink-0">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <UserIcon className="w-5 h-5 opacity-40" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{profile?.full_name || 'User'}</p>
+            <p className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40 font-bold">{profile?.department}</p>
+          </div>
+        </div>
         
         <nav className="flex-1 p-3 space-y-1">
           {navItems.map(item => (
@@ -59,11 +77,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="mb-3 px-2">
-            <p className="text-sm font-medium truncate">{profile?.full_name || 'User'}</p>
-            <p className="text-xs text-sidebar-foreground/50">{profile?.department}</p>
-          </div>
+        <div className="p-4 border-t border-sidebar-border space-y-1">
+          <ProfileSettings trigger={
+            <button className="flex items-center gap-2 px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors w-full rounded-lg hover:bg-sidebar-accent/50">
+              <Settings className="w-4 h-4" />
+              Settings
+            </button>
+          } />
           <button
             onClick={signOut}
             className="flex items-center gap-2 px-3 py-2 text-sm text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors w-full rounded-lg hover:bg-sidebar-accent/50"
