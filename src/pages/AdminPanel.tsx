@@ -3,6 +3,7 @@ import StatusBadge from '@/components/StatusBadge';
 import { useBookings } from '@/hooks/useBookings';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -84,9 +85,23 @@ const AdminPanel = () => {
                         <TableCell>{b.room}</TableCell>
                         <TableCell>{b.title}</TableCell>
                         <TableCell>{b.department}</TableCell>
-                        <TableCell>{format(new Date(b.start_time), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            try {
+                              const d = new Date(b.start_time);
+                              return isNaN(d.getTime()) ? 'Invalid Date' : format(d, 'MMM d, yyyy');
+                            } catch { return 'Invalid Date'; }
+                          })()}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {format(new Date(b.start_time), 'h:mm a')} – {format(new Date(b.end_time), 'h:mm a')}
+                          {(() => {
+                            try {
+                              const s = new Date(b.start_time);
+                              const e = new Date(b.end_time);
+                              if (isNaN(s.getTime()) || isNaN(e.getTime())) return 'Invalid Range';
+                              return `${format(s, 'h:mm a')} – ${format(e, 'h:mm a')}`;
+                            } catch { return 'Invalid Range'; }
+                          })()}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -152,9 +167,23 @@ const AdminPanel = () => {
                         <TableCell>{b.room}</TableCell>
                         <TableCell>{b.title}</TableCell>
                         <TableCell>{b.department}</TableCell>
-                        <TableCell>{format(new Date(b.start_time), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            try {
+                              const d = new Date(b.start_time);
+                              return isNaN(d.getTime()) ? 'Invalid Date' : format(d, 'MMM d, yyyy');
+                            } catch { return 'Invalid Date'; }
+                          })()}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {format(new Date(b.start_time), 'h:mm a')} – {format(new Date(b.end_time), 'h:mm a')}
+                          {(() => {
+                            try {
+                              const s = new Date(b.start_time);
+                              const e = new Date(b.end_time);
+                              if (isNaN(s.getTime()) || isNaN(e.getTime())) return 'Invalid Range';
+                              return `${format(s, 'h:mm a')} – ${format(e, 'h:mm a')}`;
+                            } catch { return 'Invalid Range'; }
+                          })()}
                         </TableCell>
                         <TableCell><StatusBadge status={b.status} /></TableCell>
                         <TableCell className="text-right">

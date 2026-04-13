@@ -26,8 +26,8 @@ const itemVariants = {
 };
 
 const Index = () => {
-  const { bookings, isLoading: bookingsLoading, updateBookingStatus } = useBookings();
-  const { rooms, isLoading: roomsLoading } = useRooms();
+  const { bookings = [], isLoading: bookingsLoading, updateBookingStatus } = useBookings();
+  const { rooms = [], isLoading: roomsLoading } = useRooms();
   const { isAdmin } = useAuth();
 
   const isLoading = bookingsLoading || roomsLoading;
@@ -68,9 +68,23 @@ const Index = () => {
                       <TableCell>{b.room}</TableCell>
                       <TableCell>{b.title}</TableCell>
                       <TableCell>{b.department}</TableCell>
-                      <TableCell>{format(new Date(b.start_time), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        {(() => {
+                          try {
+                            const d = new Date(b.start_time);
+                            return isNaN(d.getTime()) ? 'Invalid Date' : format(d, 'MMM d, yyyy');
+                          } catch { return 'Invalid Date'; }
+                        })()}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {format(new Date(b.start_time), 'h:mm a')} – {format(new Date(b.end_time), 'h:mm a')}
+                        {(() => {
+                          try {
+                            const s = new Date(b.start_time);
+                            const e = new Date(b.end_time);
+                            if (isNaN(s.getTime()) || isNaN(e.getTime())) return 'Invalid Range';
+                            return `${format(s, 'h:mm a')} – ${format(e, 'h:mm a')}`;
+                          } catch { return 'Invalid Range'; }
+                        })()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -114,10 +128,9 @@ const Index = () => {
             animate="visible"
             className="space-y-6"
           >
-          >
-            {rooms.map(room => (
+            {Array.isArray(rooms) && rooms.map(room => (
               <motion.div key={room.id} variants={itemVariants}>
-                <WeeklyCalendar bookings={bookings} room={room.name} />
+                <WeeklyCalendar bookings={bookings || []} room={room.name} />
               </motion.div>
             ))}
           </motion.div>

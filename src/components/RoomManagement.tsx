@@ -76,7 +76,7 @@ const RoomManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rooms.map((room) => (
+            {rooms?.map((room) => (
               <TableRow key={room.id} className="hover:bg-white/5">
                 <TableCell>
                   <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden border border-white/10">

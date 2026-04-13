@@ -6,7 +6,8 @@ import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { sendEmail } from '../utils/email.js';
 import { format, addHours, parseISO } from 'date-fns';
-import { RRule } from 'rrule';
+import pkg from 'rrule';
+const { RRule } = pkg;
 
 const router = Router();
 
@@ -144,8 +145,27 @@ router.post('/', authenticateToken, bookingLimiter, (req, res) => {
       return res.status(400).json({ error: 'Invalid room selected' });
     }
 
-    const { recurrence_rule } = req.body;
-    const recurrence_id = recurrence_rule ? randomUUID() : null;
+    const { recurrence } = req.body;
+    let { recurrence_rule } = req.body;
+    const recurrence_id = (recurrence && recurrence !== 'none') || recurrence_rule ? randomUUID() : null;
+
+    if (recurrence && recurrence !== 'none' && !recurrence_rule) {
+      const freqMap = {
+        daily: RRule.DAILY,
+        weekly: RRule.WEEKLY,
+        biweekly: RRule.WEEKLY,
+        monthly: RRule.MONTHLY,
+      };
+
+      const rule = new RRule({
+        freq: freqMap[recurrence],
+        interval: recurrence === 'biweekly' ? 2 : 1,
+        dtstart: parseISO(start_time),
+        count: 10,
+      });
+      recurrence_rule = rule.toString();
+    }
+
     let bookingsToCreate = [{ start: start_time, end: end_time }];
 
     if (recurrence_rule) {
@@ -155,7 +175,7 @@ router.post('/', authenticateToken, bookingLimiter, (req, res) => {
         const limitDate = new Date();
         limitDate.setMonth(limitDate.getMonth() + 3);
         
-        const dates = rule.between(new Date(start_time), limitDate);
+        const dates = rule.between(parseISO(start_time), limitDate);
         const duration = new Date(end_time).getTime() - new Date(start_time).getTime();
 
         bookingsToCreate = dates.map(date => {
@@ -164,7 +184,8 @@ router.post('/', authenticateToken, bookingLimiter, (req, res) => {
           return { start: s, end: e };
         });
       } catch (err) {
-        return res.status(400).json({ error: 'Invalid recurrence rule' });
+        console.error('RRule generation error:', err);
+        return res.status(400).json({ error: 'Invalid recurrence parameters' });
       }
     }
 

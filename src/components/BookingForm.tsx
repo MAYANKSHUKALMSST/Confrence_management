@@ -10,7 +10,6 @@ import { useRooms } from '@/hooks/useRooms';
 import { useAuth } from '@/hooks/useAuth';
 import { Plus, Edit2, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { RRule, Frequency } from 'rrule';
 
 interface BookingFormProps {
   mode?: 'create' | 'edit';
@@ -24,19 +23,32 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
   const [open, setOpen] = useState(false);
   
   // Format initial date/times if editing
-  const initDate = initialData ? new Date(initialData.start_time).toISOString().split('T')[0] : '';
-  const initStart = initialData ? new Date(initialData.start_time).toTimeString().substring(0,5) : '';
-  const initEnd = initialData ? new Date(initialData.end_time).toTimeString().substring(0,5) : '';
+  const safeToISO = (dateStr: string | undefined) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? '' : d.toISOString();
+    } catch {
+      return '';
+    }
+  };
 
-  const { rooms } = useRooms();
+  const fullISO = safeToISO(initialData?.start_time);
+  const initDate = fullISO ? fullISO.split('T')[0] : '';
+  const initStart = initialData?.start_time ? new Date(initialData.start_time).toTimeString().substring(0,5) : '';
+  const initEnd = initialData?.end_time ? new Date(initialData.end_time).toTimeString().substring(0,5) : '';
+
+  const { rooms = [] } = useRooms() || {};
   const [room, setRoom] = useState(initialData?.room ?? 'Liberty');
   const [title, setTitle] = useState(initialData?.title ?? '');
-  const [department, setDepartment] = useState<Department>(initialData?.department ?? profile?.department ?? 'Technical');
-  const [date, setDate] = useState(initDate);
-  const [startTime, setStartTime] = useState(initStart);
-  const [endTime, setEndTime] = useState(initEnd);
+  const [department, setDepartment] = useState<Department>((initialData?.department ?? profile?.department ?? 'Technical') as Department);
+  const [date, setDate] = useState(initDate || '');
+  const [startTime, setStartTime] = useState(initStart || '');
+  const [endTime, setEndTime] = useState(initEnd || '');
   const [attendees, setAttendees] = useState(initialData?.attendees ?? '');
   const [recurrence, setRecurrence] = useState<'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly'>('none');
+
+  if (!rooms) return null; // Safe guard
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +67,7 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
     }
 
     // Check for conflicts
-    const conflict = bookings.some(b =>
+    const conflict = (bookings || []).some(b =>
       b.room === room &&
       b.id !== initialData?.id &&
       b.status !== 'rejected' &&
@@ -68,24 +80,6 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
       return;
     }
 
-    let recurrence_rule = null;
-    if (recurrence !== 'none') {
-      const freqMap = {
-        daily: Frequency.DAILY,
-        weekly: Frequency.WEEKLY,
-        biweekly: Frequency.WEEKLY,
-        monthly: Frequency.MONTHLY,
-      };
-      
-      const rule = new RRule({
-        freq: freqMap[recurrence as keyof typeof freqMap],
-        interval: recurrence === 'biweekly' ? 2 : 1,
-        dtstart: startDt,
-        count: 10, // Default to 10 instances max
-      });
-      recurrence_rule = rule.toString();
-    }
-
     const payload = {
       room,
       title,
@@ -93,7 +87,7 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
       attendees,
       start_time: startDt.toISOString(),
       end_time: endDt.toISOString(),
-      recurrence_rule
+      recurrence
     };
 
     if (mode === 'edit' && initialData) {
@@ -141,7 +135,7 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
             <Select value={room} onValueChange={v => setRoom(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {rooms.map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Cap: {r.capacity})</SelectItem>)}
+                {(rooms || []).map(r => <SelectItem key={r.id} value={r.name}>{r.name} (Cap: {r.capacity})</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

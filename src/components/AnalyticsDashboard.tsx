@@ -34,7 +34,7 @@ const AnalyticsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.totalBookings}</div>
+            <div className="text-2xl font-bold">{data.stats?.totalBookings || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Confirmed meetings this month</p>
           </CardContent>
         </Card>
@@ -47,7 +47,7 @@ const AnalyticsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.totalRooms}</div>
+            <div className="text-2xl font-bold">{data.stats?.totalRooms || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Active conference spaces</p>
           </CardContent>
         </Card>
@@ -60,7 +60,7 @@ const AnalyticsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats.totalUsers}</div>
+            <div className="text-2xl font-bold">{data.stats?.totalUsers || 0}</div>
             <p className="text-xs text-muted-foreground mt-1">Users registered in system</p>
           </CardContent>
         </Card>
