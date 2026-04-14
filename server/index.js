@@ -20,6 +20,7 @@ import profileRoutes from './routes/profiles.js';
 import emailSettingsRoutes from './routes/email-settings.js';
 import roomRoutes from './routes/rooms.js';
 import analyticsRoutes from './routes/analytics.js';
+import userRoutes from './routes/users.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -53,7 +54,7 @@ app.use(helmet({
       styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "ws:", "wss:"],
       upgradeInsecureRequests: null, // Keep disabled since we don't have SSL yet
     },
   },
@@ -65,7 +66,7 @@ app.use(express.json());
 // ── Rate Limiting ────────────────────────────────────────────────────────────
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 1000,
   message: { error: 'Too many requests from this IP, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -81,6 +82,7 @@ app.use('/api/profiles', profileRoutes);
 app.use('/api/email-settings', emailSettingsRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', userRoutes);
 
 // ── Serve frontend in production ───────────────────────────────────────────
 
@@ -94,4 +96,5 @@ app.get('*', (req, res) => {
 
 httpServer.listen(PORT, () => {
   console.log(`🚀 RoomBook API server running on http://localhost:${PORT}`);
+  console.log(`📅 Build Timestamp: 2026-04-14 05:40 (FINAL RECOVERY)`);
 });

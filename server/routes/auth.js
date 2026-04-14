@@ -59,9 +59,9 @@ router.post('/signup', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
     const token = jwt.sign({ userId: id }, secret, { expiresIn: TOKEN_EXPIRY, algorithm: 'HS256' });
     const user = db.get('SELECT id, email, full_name, department, role FROM users WHERE id = ?', [id]);
     
-    // Set HttpOnly cookie - Secure only if SSL is enabled or in production with COOKIE_SECURE env
-    const isSecure = process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false');
-    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'strict', maxAge: 15 * 60 * 1000 });
+    // Set HttpOnly cookie - Explicitly false for HTTP troubleshooting
+    const isSecure = false;
+    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 15 * 60 * 1000 });
     res.json({
       user: { id: user.id, email: user.email },
       profile: { id: user.id, full_name: user.full_name, department: user.department },
@@ -96,9 +96,9 @@ router.post('/signin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
     const secret = getSecret();
     const token = jwt.sign({ userId: user.id }, secret, { expiresIn: TOKEN_EXPIRY, algorithm: 'HS256' });
     
-    // HttpOnly cookie
-    const isSecure = process.env.COOKIE_SECURE === 'true' || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false');
-    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'strict', maxAge: 15 * 60 * 1000 });
+    // Set HttpOnly cookie - Explicitly false for HTTP troubleshooting
+    const isSecure = false;
+    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 15 * 60 * 1000 });
     res.json({
       user: { id: user.id, email: user.email },
       profile: { id: user.id, full_name: user.full_name, department: user.department },

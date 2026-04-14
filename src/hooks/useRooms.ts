@@ -9,7 +9,11 @@ export const useRooms = () => {
 
   const { data: rooms = [], isLoading } = useQuery({
     queryKey: ['rooms'],
-    queryFn: () => api.rooms.list() as Promise<Room[]>,
+    queryFn: async () => {
+      const { data, error } = await api.rooms.list();
+      if (error) throw new Error(error);
+      return data as Room[];
+    },
   });
 
   const createRoom = useMutation({

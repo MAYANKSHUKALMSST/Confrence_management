@@ -15,7 +15,8 @@ import { useEmailSettings } from '@/hooks/useEmailSettings';
 import { useState, useEffect } from 'react';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import RoomManagement from '@/components/RoomManagement';
-import { BarChart3, Building } from 'lucide-react';
+import UserManagement from '@/components/UserManagement';
+import { BarChart3, Building, Users } from 'lucide-react';
 
 const AdminPanel = () => {
   const { isAdmin } = useAuth();
@@ -47,6 +48,10 @@ const AdminPanel = () => {
             <TabsTrigger value="rooms" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2 py-2">
               <Building className="w-4 h-4" />
               Room Management
+            </TabsTrigger>
+            <TabsTrigger value="users" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2 py-2">
+              <Users className="w-4 h-4" />
+              Users
             </TabsTrigger>
             <TabsTrigger value="email" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2 py-2">
               <Settings className="w-4 h-4" />
@@ -232,6 +237,10 @@ const AdminPanel = () => {
 
           <TabsContent value="rooms">
             <RoomManagement />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UserManagement />
           </TabsContent>
         </Tabs>
       </div>

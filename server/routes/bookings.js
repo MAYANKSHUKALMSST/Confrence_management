@@ -98,13 +98,14 @@ const bookingLimiter = rateLimit({
 
 // ── Helper: Check for booking overlaps ─────────────────────────────────────
 const hasOverlap = (room, start, end, excludeId = null) => {
+  const statusToExcl = 'rejected';
   const query = excludeId 
-    ? "SELECT id FROM bookings WHERE room = ? AND status != 'rejected' AND id != ? AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?))"
-    : "SELECT id FROM bookings WHERE room = ? AND status != 'rejected' AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?))";
+    ? "SELECT id FROM bookings WHERE room = ? AND status != ? AND id != ? AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?))"
+    : "SELECT id FROM bookings WHERE room = ? AND status != ? AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?) OR (start_time >= ? AND end_time <= ?))";
   
   const params = excludeId 
-    ? [room, excludeId, end, start, end, start, start, end]
-    : [room, end, start, end, start, start, end];
+    ? [room, statusToExcl, excludeId, end, start, end, start, start, end]
+    : [room, statusToExcl, end, start, end, start, start, end];
     
   return !!db.get(query, params);
 };

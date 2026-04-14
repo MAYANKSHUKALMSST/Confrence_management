@@ -87,6 +87,12 @@ db.exec(`
   )
 `);
 
+// ── Indexes for performance ────────────────────────────────────────────────
+db.exec('CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_bookings_start_time ON bookings(start_time)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_bookings_room ON bookings(room)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
+
 // ── Wrapper helpers to match better-sqlite3-like API ───────────────────────
 
 const dbHelper = {

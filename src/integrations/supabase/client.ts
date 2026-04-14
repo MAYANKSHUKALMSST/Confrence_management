@@ -126,4 +126,13 @@ export const api = {
   analytics: {
     get: () => request('/analytics'),
   },
+  users: {
+    list: () => request('/users'),
+    create: (user: any) => request('/users', { method: 'POST', body: JSON.stringify(user) }),
+    changePassword: (id: string, password: string) =>
+      request(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }),
+    updateRole: (id: string, role: string) =>
+      request(`/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
+    delete: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
+  },
 };

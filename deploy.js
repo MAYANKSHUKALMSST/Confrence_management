@@ -26,10 +26,10 @@ async function deploy() {
     // Create directory if it doesn't exist, remove old code, extract new code
     const setupCommand = `
       set -e
+      echo "Cleaning up old code..."
       mkdir -p ~/roombook
+      rm -rf ~/roombook/*
       cd ~/roombook
-      
-      echo "Extracting files..."
       tar -xf /tmp/roombook.tar || { echo "Tar extraction failed"; exit 1; }
       
       echo "Installing Node.js 20..."

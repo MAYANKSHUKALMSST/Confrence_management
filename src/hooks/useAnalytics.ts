@@ -15,7 +15,11 @@ export interface AnalyticsData {
 export const useAnalytics = () => {
   return useQuery({
     queryKey: ['analytics'],
-    queryFn: () => api.analytics.get() as Promise<AnalyticsData>,
+    queryFn: async () => {
+      const { data, error } = await api.analytics.get();
+      if (error) throw new Error(error);
+      return data as AnalyticsData;
+    },
     refetchInterval: 60000, // Refresh every minute
   });
 };
