@@ -1,4 +1,6 @@
 // Local API client — replaces Supabase client
+import { reportNetworkError, reportNetworkSuccess } from '@/lib/failover';
+
 const API_BASE = '/api';
 
 function getToken(): string | null {
@@ -34,6 +36,8 @@ async function request<T>(
       },
     });
 
+    reportNetworkSuccess(); // successful fetch
+
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       return { data: null, error: body.error || `Request failed (${res.status})` };
@@ -42,6 +46,7 @@ async function request<T>(
     const data = await res.json();
     return { data, error: null };
   } catch (err: any) {
+    reportNetworkError(); // network error (down server)
     return { data: null, error: err.message || 'Network error' };
   }
 }

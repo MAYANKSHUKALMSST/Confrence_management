@@ -127,4 +127,45 @@ router.post('/logout', (req, res) => {
   res.json({ success: true });
 });
 
+// ── Transfer Token (for failover) ──────────────────────────────────────────
+// Returns the raw JWT so the frontend can pass it to the backup server
+
+router.get('/transfer-token', authenticateToken, (req, res) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).json({ error: 'No token available' });
+  }
+  res.json({ token });
+});
+
+// ── Accept Token (for failover) ────────────────────────────────────────────
+// Validates a JWT from another server (same secret) and sets local cookie
+
+router.get('/accept-token', (req, res) => {
+  const { token, redirect: redirectPath } = req.query;
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+  try {
+    const secret = getSecret();
+    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
+    
+    // Verify user exists in DB
+    const user = db.get('SELECT id, email FROM users WHERE id = ?', [decoded.userId]);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+
+    // Issue a fresh token and set cookie
+    const newToken = jwt.sign({ userId: user.id }, secret, { expiresIn: TOKEN_EXPIRY, algorithm: 'HS256' });
+    const isSecure = false;
+    res.cookie('token', newToken, { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 15 * 60 * 1000 });
+    
+    res.redirect(redirectPath || '/');
+  } catch (err) {
+    console.error('Accept-token error:', err.message);
+    res.redirect('/auth');
+  }
+});
+
 export default router;

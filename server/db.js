@@ -7,14 +7,14 @@ import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, 'data');
-const DB_PATH = path.join(DATA_DIR, 'roombook.db');
+export const DB_PATH = path.join(DATA_DIR, 'roombook.db');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const db = new Database(DB_PATH);
+let db = new Database(DB_PATH);
 console.log('🗄️ SQLite DB initialized at', DB_PATH);
 
 // No periodic save needed; better-sqlite3 writes directly to file
@@ -96,10 +96,18 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)');
 // ── Wrapper helpers to match better-sqlite3-like API ───────────────────────
 
 const dbHelper = {
+  // Callback for change notifications
+  onChange: null,
+
   // Run a query that modifies data (INSERT, UPDATE, DELETE)
   run(sql, params = []) {
     const stmt = db.prepare(sql);
     stmt.run(params);
+    
+    // Trigger change callback if registered
+    if (this.onChange) {
+      this.onChange();
+    }
   },
 
   // Get a single row
@@ -114,6 +122,17 @@ const dbHelper = {
     const stmt = db.prepare(sql);
     const rows = stmt.all(params);
     return rows;
+  },
+
+  // Reload the database connection (used after sync import)
+  reloadDatabase() {
+    try {
+      db.close();
+    } catch (e) {
+      console.warn('Warning closing old DB:', e.message);
+    }
+    db = new Database(DB_PATH);
+    console.log('🗄️ SQLite DB reloaded after sync import');
   },
 };
 

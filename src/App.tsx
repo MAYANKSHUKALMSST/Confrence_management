@@ -11,6 +11,7 @@ import MyBookings from "./pages/MyBookings";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import RoomDisplay from "./pages/RoomDisplay";
+import FailoverBanner from "./components/FailoverBanner";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,7 @@ const App = () => (
       <BrowserRouter>
         <SocketProvider>
           <AuthProvider>
+            <FailoverBanner />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
