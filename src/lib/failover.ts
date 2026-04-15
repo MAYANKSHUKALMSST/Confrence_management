@@ -2,11 +2,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 /** 
- * With the Virtual IP (VIP) setup, users only see 172.16.100.26.
+ * With the Virtual IP (VIP) setup, users only see 10.30.71.50.
  * The network handles the switch behind the scenes.
  * We no longer need client-side redirects.
  */
-export const VIRTUAL_IP = '172.16.100.26';
+export const VIRTUAL_IP = '10.30.71.50';
 
 const HEALTH_CHECK_INTERVAL = 10_000;  // 10 seconds
 const HEALTH_CHECK_TIMEOUT = 3_000;    // 3 second timeout 
@@ -15,7 +15,7 @@ const HEALTH_CHECK_TIMEOUT = 3_000;    // 3 second timeout
 
 /** Check if the current environment is using the VIP or local dev */
 export function isUsingVip(): boolean {
-  return window.location.hostname === '172.16.100.26';
+  return window.location.hostname === '10.30.71.50';
 }
 
 /** Check if the VIP is currently healthy */

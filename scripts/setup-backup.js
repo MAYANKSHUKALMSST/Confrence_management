@@ -5,14 +5,14 @@ async function configureBackupKeepalived() {
   try {
     console.log('🔗 Connecting to Primary as jump host...');
     await ssh.connect({
-      host: '172.16.100.24',
+      host: '10.30.71.50',
       username: 'mayank',
       password: '9044472544',
       port: 22
     });
 
     console.log('📦 Installing keepalived on Backup via Primary jump...');
-    const jumpPrefix = 'sshpass -p "9044472544" ssh -o StrictHostKeyChecking=no mayank@172.16.100.25';
+    const jumpPrefix = 'sshpass -p "9044472544" ssh -o StrictHostKeyChecking=no mayank@10.30.71.51';
     
     await ssh.execCommand(`${jumpPrefix} 'echo "9044472544" | sudo -S apt-get update'`);
     await ssh.execCommand(`${jumpPrefix} 'echo "9044472544" | sudo -S apt-get install -y keepalived'`);
@@ -45,7 +45,7 @@ vrrp_instance VI_1 {
         auth_pass roombook_pass
     }
     virtual_ipaddress {
-        172.16.100.26
+        10.30.71.50
     }
     track_script {
         check_nginx

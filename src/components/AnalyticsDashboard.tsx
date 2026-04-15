@@ -34,8 +34,8 @@ const AnalyticsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats?.totalBookings || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Confirmed meetings this month</p>
+            <div className="text-3xl font-bold text-foreground">{data.stats?.totalBookings || 0}</div>
+            <p className="text-sm text-foreground/70 mt-1 font-medium">Confirmed meetings this month</p>
           </CardContent>
         </Card>
         
@@ -47,8 +47,8 @@ const AnalyticsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats?.totalRooms || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active conference spaces</p>
+            <div className="text-3xl font-bold text-foreground">{data.stats?.totalRooms || 0}</div>
+            <p className="text-sm text-foreground/70 mt-1 font-medium">Active conference spaces</p>
           </CardContent>
         </Card>
 
@@ -60,8 +60,8 @@ const AnalyticsDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.stats?.totalUsers || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">Users registered in system</p>
+            <div className="text-3xl font-bold text-foreground">{data.stats?.totalUsers || 0}</div>
+            <p className="text-sm text-foreground/70 mt-1 font-medium">Users registered in system</p>
           </CardContent>
         </Card>
       </div>
@@ -86,10 +86,11 @@ const AnalyticsDashboard = () => {
                 <XAxis 
                   dataKey="hour" 
                   tickFormatter={(h) => `${h > 12 ? h - 12 : h}${h >= 12 ? 'pm' : 'am'}`}
-                  stroke="rgba(255,255,255,0.4)"
+                  stroke="currentColor" 
+                  className="text-foreground/40 font-bold"
                   fontSize={10}
                 />
-                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} />
+                <YAxis stroke="currentColor" className="text-foreground/40 font-bold" fontSize={10} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'rgba(23, 23, 23, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                   labelFormatter={(h) => `${h}:00`}
@@ -140,8 +141,8 @@ const AnalyticsDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.deptActivity}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.4)" fontSize={10} />
-                <YAxis stroke="rgba(255,255,255,0.4)" fontSize={10} />
+                <XAxis dataKey="name" stroke="currentColor" className="text-foreground/40 font-bold" fontSize={10} />
+                <YAxis stroke="currentColor" className="text-foreground/40 font-bold" fontSize={10} />
                 <Tooltip 
                    contentStyle={{ backgroundColor: 'rgba(23, 23, 23, 0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
                 />

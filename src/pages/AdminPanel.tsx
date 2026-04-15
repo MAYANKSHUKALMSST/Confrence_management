@@ -30,9 +30,9 @@ const AdminPanel = () => {
   return (
     <AppLayout>
       <div className="animate-fade-in">
-        <div className="mb-6">
-          <h1 className="text-2xl font-heading font-bold">Admin Panel</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage bookings and system settings</p>
+        <div className="mb-6 bg-background/20 backdrop-blur-sm p-4 rounded-xl border border-white/5">
+          <h1 className="text-3xl font-heading font-bold text-foreground">Admin Panel</h1>
+          <p className="text-foreground/80 text-sm mt-1 font-medium">Manage bookings and system settings</p>
         </div>
 
         <Tabs defaultValue="bookings" className="space-y-6">

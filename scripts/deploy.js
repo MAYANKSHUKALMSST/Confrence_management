@@ -5,8 +5,8 @@ import 'dotenv/config';
 const ssh = new NodeSSH();
 
 // Get configuration from .env
-const PRIMARY_IP = '172.16.100.24';
-const BACKUP_IP = '172.16.100.25';
+const PRIMARY_IP = '10.30.71.50';
+const BACKUP_IP = '10.30.71.51'; // Set to a potential backup IP
 const SSH_USER = 'mayank';
 const SSH_PASSWORD = process.env.SSH_PASSWORD;
 

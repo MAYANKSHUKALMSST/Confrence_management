@@ -37,10 +37,10 @@ const Index = () => {
   return (
     <AppLayout>
       <div className="animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 bg-background/20 backdrop-blur-sm p-4 rounded-xl border border-white/5">
           <div>
-            <h1 className="text-2xl font-heading font-bold">Dashboard</h1>
-            <p className="text-muted-foreground text-sm mt-1">View room availability and create bookings</p>
+            <h1 className="text-3xl font-heading font-bold text-foreground">Dashboard</h1>
+            <p className="text-foreground/80 text-sm mt-1 font-medium">View room availability and create bookings</p>
           </div>
           <BookingForm />
         </div>

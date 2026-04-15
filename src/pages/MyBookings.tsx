@@ -25,10 +25,10 @@ const MyBookings = () => {
   return (
     <AppLayout>
       <div className="animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 bg-background/20 backdrop-blur-sm p-4 rounded-xl border border-white/5">
           <div>
-            <h1 className="text-2xl font-heading font-bold">My Bookings</h1>
-            <p className="text-muted-foreground text-sm mt-1">Track your booking requests</p>
+            <h1 className="text-3xl font-heading font-bold text-foreground">My Bookings</h1>
+            <p className="text-foreground/80 text-sm mt-1 font-medium">Track your booking requests</p>
           </div>
           <BookingForm />
         </div>

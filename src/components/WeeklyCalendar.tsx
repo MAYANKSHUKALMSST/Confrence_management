@@ -24,7 +24,7 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
   );
 
   return (
-    <div className="bg-card rounded-xl border overflow-hidden">
+    <div className="glass-card rounded-xl overflow-hidden shadow-2xl">
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-heading font-semibold text-lg">{room}</h3>
         <div className="flex items-center gap-2">
@@ -52,12 +52,12 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
                 isSameDay(day, new Date()) && 'bg-primary/5'
               )}
             >
-              <div className="text-muted-foreground text-xs">{format(day, 'EEE')}</div>
+              <div className="text-foreground/60 text-[10px] font-bold uppercase tracking-wider">{format(day, 'EEE')}</div>
               <div className={cn(
-                'w-7 h-7 rounded-full flex items-center justify-center mx-auto mt-0.5',
-                isSameDay(day, new Date()) && 'bg-primary text-primary-foreground'
+                "w-7 h-7 rounded-full flex items-center justify-center mx-auto mt-0.5",
+                isSameDay(day, new Date()) && "bg-primary text-primary-foreground"
               )}>
-                {format(day, 'd')}
+                {format(day, "d")}
               </div>
             </div>
           ))}
@@ -65,7 +65,7 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
           {/* Time rows */}
           {HOURS.map(hour => (
             <>
-              <div key={`h-${hour}`} className="border-r border-b p-1 text-xs text-muted-foreground text-right pr-2 h-16 flex items-start justify-end">
+              <div key={`h-${hour}`} className="border-r border-b p-1 text-[11px] text-foreground/70 font-bold text-right pr-2 h-16 flex items-start justify-end">
                 {format(new Date(2000, 0, 1, hour), 'h a')}
               </div>
               {days.map(day => {

@@ -3,9 +3,9 @@ const ssh = new NodeSSH();
 
 async function configurePrimaryKeepalived() {
   try {
-    console.log('🔗 Connecting to Primary (172.16.100.24)...');
+    console.log('🔗 Connecting to Primary (10.30.71.50)...');
     await ssh.connect({
-      host: '172.16.100.24',
+      host: '10.30.71.50',
       username: 'mayank',
       password: '9044472544',
       port: 22
@@ -43,7 +43,7 @@ vrrp_instance VI_1 {
         auth_pass roombook_pass
     }
     virtual_ipaddress {
-        172.16.100.26
+        10.30.71.50
     }
     track_script {
         check_nginx

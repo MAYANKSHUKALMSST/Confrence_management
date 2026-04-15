@@ -54,17 +54,17 @@ const RoomManagement = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center bg-card/40 p-4 rounded-xl border border-white/5 shadow-sm">
+      <div className="flex justify-between items-center glass-card p-5 rounded-xl border-white/10 shadow-lg">
         <div>
-          <h3 className="font-semibold text-lg">Conference Rooms</h3>
-          <p className="text-xs text-muted-foreground">Manage dynamic room settings and availability</p>
+          <h3 className="font-heading font-bold text-xl text-foreground">Conference Rooms</h3>
+          <p className="text-sm text-foreground/70">Manage dynamic room settings and availability</p>
         </div>
         <Button onClick={() => handleOpenDialog()} className="gap-2">
           <Plus className="w-4 h-4" /> Add Room
         </Button>
       </div>
 
-      <div className="bg-card/50 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden shadow-xl">
+      <div className="glass-card rounded-xl overflow-hidden shadow-2xl">
         <Table>
           <TableHeader>
             <TableRow>
@@ -88,13 +88,11 @@ const RoomManagement = () => {
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">{room.name}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Users className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-1.5 text-foreground/80 font-medium text-sm">
+                    <Users className="w-4 h-4 text-primary" />
                     {room.capacity}
                   </div>
-                </TableCell>
-                <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
+                <TableCell className="max-w-[200px] truncate text-xs text-foreground/70 italic font-medium">
                   {room.equipment || 'No equipment listed'}
                 </TableCell>
                 <TableCell className="text-right">

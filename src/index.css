@@ -22,7 +22,7 @@
     --secondary-foreground: 220 30% 12%;
 
     --muted: 220 14% 92%;
-    --muted-foreground: 220 10% 46%;
+    --muted-foreground: 220 12% 38%;
 
     --accent: 220 20% 94%;
     --accent-foreground: 220 30% 12%;
@@ -70,7 +70,7 @@
     --secondary: 220 65% 40%;
     --secondary-foreground: 0 0% 100%;
     --muted: 220 20% 18%;
-    --muted-foreground: 220 10% 60%;
+    --muted-foreground: 220 12% 75%;
     --accent: 220 20% 16%;
     --accent-foreground: 220 14% 92%;
     --destructive: 0 62% 30.6%;
@@ -106,8 +106,23 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
+    @apply bg-card/90 backdrop-blur-lg border border-border/70 shadow-2xl;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.02);
   }
+}
+
+/* Custom styles for native date/time icons to ensure visibility */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5); /* Adjust based on theme */
+  opacity: 0.6;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.8;
 }
 
 @keyframes room-flash {
