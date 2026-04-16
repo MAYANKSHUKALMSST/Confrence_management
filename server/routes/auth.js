@@ -22,6 +22,12 @@ function getSecret() {
 
 router.post('/signup', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'Too many sign‑up attempts, try later.' }), async (req, res) => {
   try {
+    const allowedKeys = ['email', 'password', 'full_name', 'department'];
+    const extraKeys = Object.keys(req.body).filter(k => !allowedKeys.includes(k));
+    if (extraKeys.length > 0) {
+      return res.status(400).json({ error: 'Invalid properties in request payload' });
+    }
+
     let { email, password, full_name, department } = req.body;
 
     // Sanitization
@@ -61,7 +67,7 @@ router.post('/signup', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
     
     // Set HttpOnly cookie - Explicitly false for HTTP troubleshooting
     const isSecure = false;
-    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 15 * 60 * 1000 });
+    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'strict', maxAge: 15 * 60 * 1000 });
     res.json({
       user: { id: user.id, email: user.email },
       profile: { id: user.id, full_name: user.full_name, department: user.department },
@@ -77,6 +83,12 @@ router.post('/signup', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
 
 router.post('/signin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'Too many login attempts, try later.' }), async (req, res) => {
   try {
+    const allowedKeys = ['email', 'password'];
+    const extraKeys = Object.keys(req.body).filter(k => !allowedKeys.includes(k));
+    if (extraKeys.length > 0) {
+      return res.status(400).json({ error: 'Invalid properties in request payload' });
+    }
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -98,7 +110,7 @@ router.post('/signin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
     
     // Set HttpOnly cookie - Explicitly false for HTTP troubleshooting
     const isSecure = false;
-    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 15 * 60 * 1000 });
+    res.cookie('token', token, { httpOnly: true, secure: isSecure, sameSite: 'strict', maxAge: 15 * 60 * 1000 });
     res.json({
       user: { id: user.id, email: user.email },
       profile: { id: user.id, full_name: user.full_name, department: user.department },
@@ -159,7 +171,7 @@ router.get('/accept-token', (req, res) => {
     // Issue a fresh token and set cookie
     const newToken = jwt.sign({ userId: user.id }, secret, { expiresIn: TOKEN_EXPIRY, algorithm: 'HS256' });
     const isSecure = false;
-    res.cookie('token', newToken, { httpOnly: true, secure: isSecure, sameSite: 'lax', maxAge: 15 * 60 * 1000 });
+    res.cookie('token', newToken, { httpOnly: true, secure: isSecure, sameSite: 'strict', maxAge: 15 * 60 * 1000 });
     
     res.redirect(redirectPath || '/');
   } catch (err) {

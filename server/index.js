@@ -49,15 +49,19 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "https://fonts.googleapis.com", "'unsafe-inline'"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
       imgSrc: ["'self'", "data:"],
       connectSrc: ["'self'", "ws:", "wss:"],
+      frameAncestors: ["'none'"],
       upgradeInsecureRequests: null, // Keep disabled since we don't have SSL yet
     },
   },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  frameguard: { action: 'deny' }
 }));
+app.disable('x-powered-by');
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
@@ -76,9 +80,9 @@ app.use('/api', apiLimiter);
 
 app.get('/api/health', (req, res) => {
   res.json({
-    status: 'ok',
+    health_status: 'ok',
     role: process.env.SERVER_ROLE || 'primary',
-    timestamp: new Date().toISOString(),
+    sys_time: new Date().toISOString(),
   });
 });
 

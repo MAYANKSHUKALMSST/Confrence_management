@@ -131,7 +131,7 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div>
-            <Label>Room</Label>
+            <Label>Room <span className="text-red-500">*</span></Label>
             <Select value={room} onValueChange={v => setRoom(v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -140,11 +140,11 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
             </Select>
           </div>
           <div>
-            <Label>Meeting Title</Label>
+            <Label>Meeting Title <span className="text-red-500">*</span></Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} required maxLength={100} placeholder="e.g., Sprint Planning" />
           </div>
           <div>
-            <Label>Department</Label>
+            <Label>Department <span className="text-red-500">*</span></Label>
             <Select value={department} onValueChange={v => setDepartment(v as Department)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -153,20 +153,20 @@ const BookingForm = ({ mode = 'create', initialData, trigger }: BookingFormProps
             </Select>
           </div>
           <div>
-            <Label>Attendees</Label>
+            <Label>Attendees <span className="text-red-500">*</span></Label>
             <Input value={attendees} onChange={e => setAttendees(e.target.value)} required placeholder="e.g., John, Sarah, Mike" />
           </div>
           <div>
-            <Label>Date</Label>
+            <Label>Date <span className="text-red-500">*</span></Label>
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} min={today} required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Start Time</Label>
+              <Label>Start Time <span className="text-red-500">*</span></Label>
               <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required />
             </div>
             <div>
-              <Label>End Time</Label>
+              <Label>End Time <span className="text-red-500">*</span></Label>
               <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} required />
             </div>
           </div>
