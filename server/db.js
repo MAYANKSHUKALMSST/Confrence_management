@@ -44,15 +44,24 @@ db.exec(`
     title TEXT NOT NULL,
     department TEXT NOT NULL,
     attendees TEXT NOT NULL DEFAULT '',
+    attendee_emails TEXT NOT NULL DEFAULT '',
     start_time TEXT NOT NULL,
     end_time TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
+    status TEXT NOT NULL DEFAULT 'confirmed',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     recurrence_id TEXT,
     recurrence_rule TEXT
   )
 `);
+
+// ── Migrations: add columns to existing DBs ────────────────────────────────
+try {
+  db.exec(`ALTER TABLE bookings ADD COLUMN attendee_emails TEXT NOT NULL DEFAULT ''`);
+  console.log('✅ Migration: added attendee_emails column to bookings');
+} catch (e) {
+  // Column already exists, ignore
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS notifications (

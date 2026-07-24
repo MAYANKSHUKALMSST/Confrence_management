@@ -3,9 +3,9 @@ const ssh = new NodeSSH();
 
 async function configurePrimaryKeepalived() {
   try {
-    console.log('🔗 Connecting to Primary (10.30.71.50)...');
+    console.log('🔗 Connecting to Primary (10.30.80.148)...');
     await ssh.connect({
-      host: '10.30.71.50',
+      host: '10.30.80.148',
       username: 'mayank',
       password: '9044472544',
       port: 22
@@ -24,10 +24,12 @@ global_defs {
    notification_email_from keepalived@localhost
    smtp_server 127.0.0.1
    smtp_connect_timeout 30
+   script_user root
+   enable_script_security
 }
 
 vrrp_script check_nginx {
-    script "killall -0 nginx"
+    script "/usr/bin/killall -0 nginx"
     interval 2
     weight 2
 }
@@ -43,7 +45,7 @@ vrrp_instance VI_1 {
         auth_pass roombook_pass
     }
     virtual_ipaddress {
-        10.30.71.50
+        10.30.80.50
     }
     track_script {
         check_nginx

@@ -49,7 +49,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
       html,
     });
 
-    console.log('📧 Email sent successfully:', info.messageId);
+    console.log(`📧 Email sent successfully to ${to}:`, info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('❌ Error sending email:', error);

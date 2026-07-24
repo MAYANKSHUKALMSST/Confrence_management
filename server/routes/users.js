@@ -102,11 +102,9 @@ router.delete('/:id', (req, res) => {
       return res.status(400).json({ error: 'Cannot delete yourself' });
     }
 
-    // Check if user has bookings
-    const bookings = db.get('SELECT id FROM bookings WHERE user_id = ?', [req.params.id]);
-    if (bookings) {
-      return res.status(400).json({ error: 'Cannot delete user with active bookings' });
-    }
+    // Delete user's bookings and notifications first (manual cascade)
+    db.run('DELETE FROM bookings WHERE user_id = ?', [req.params.id]);
+    db.run('DELETE FROM notifications WHERE user_id = ?', [req.params.id]);
 
     db.run('DELETE FROM users WHERE id = ?', [req.params.id]);
     res.json({ success: true });

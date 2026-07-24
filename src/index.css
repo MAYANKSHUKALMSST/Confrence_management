@@ -125,11 +125,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.8;
 }
 
-@keyframes room-flash {
-  0%, 100% { border-color: hsl(0 72% 51% / 0.6); background-color: hsl(0 72% 51% / 0.08); }
-  50% { border-color: hsl(0 72% 51% / 0.9); background-color: hsl(0 72% 51% / 0.15); }
+@keyframes bg-red-flash {
+  0%, 100% { background-color: #ef4444; color: white; }
+  50% { background-color: white; color: #ef4444; }
 }
 
-.animate-room-flash {
-  animation: room-flash 2s ease-in-out infinite;
+.animate-bg-red-flash {
+  animation: bg-red-flash 1s steps(2, start) infinite;
 }
+

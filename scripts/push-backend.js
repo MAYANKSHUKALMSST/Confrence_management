@@ -2,7 +2,7 @@ import { NodeSSH } from 'node-ssh';
 import path from 'path';
 
 const ssh = new NodeSSH();
-const SSH_HOST = '172.16.100.138';
+const SSH_HOST = '10.30.80.148';
 const SSH_USER = 'mayank';
 const SSH_PASSWORD = '9044472544';
 
@@ -19,10 +19,11 @@ async function pushChanges() {
     const localServer = path.resolve(process.cwd(), 'server');
     const remoteServer = '/home/mayank/roombook/server';
 
-    console.log('📤 Uploading server folder...');
+    console.log('📤 Uploading server folder (excluding data)...');
     await ssh.putDirectory(localServer, remoteServer, {
       recursive: true,
-      concurrency: 5
+      concurrency: 5,
+      validate: (path) => !path.includes('data')
     });
 
     const localNginx = path.resolve(process.cwd(), 'nginx.conf');
@@ -39,7 +40,7 @@ async function pushChanges() {
     if(resultRestart.stderr && !resultRestart.stderr.includes('password')) console.log('Nginx restart:', resultRestart.stderr);
 
     console.log('🔄 Restarting backend using pm2...');
-    await ssh.execCommand('pm2 restart roombook || pm2 start server/index.js --name "roombook"', { cwd: '/home/mayank/roombook' });
+    await ssh.execCommand('echo "SYNC_INTERVAL_MS=5000" >> .env && pm2 restart roombook || pm2 start server/index.js --name "roombook"', { cwd: '/home/mayank/roombook' });
 
     console.log('✅ Deployment complete.');
     ssh.dispose();

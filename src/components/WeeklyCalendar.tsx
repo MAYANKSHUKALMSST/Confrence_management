@@ -5,6 +5,8 @@ import StatusBadge from './StatusBadge';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import BookingForm from './BookingForm';
+import { toast } from 'sonner';
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8AM - 7PM
 
@@ -16,12 +18,37 @@ interface WeeklyCalendarProps {
 const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const days = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i)); // Mon-Fri
+  const days = Array.from({ length: 6 }, (_, i) => addDays(weekStart, i)); // Mon-Sat
 
   const roomBookings = useMemo(
     () => bookings.filter(b => b.room === room && b.status !== 'rejected'),
     [bookings, room]
   );
+
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingInitialData, setBookingInitialData] = useState<Partial<Booking>>({});
+
+  const handleCellClick = (day: Date, hour: number) => {
+    const cellStart = new Date(day);
+    cellStart.setHours(hour, 0, 0, 0);
+
+    const nowHour = new Date();
+    nowHour.setMinutes(0, 0, 0);
+    if (cellStart < nowHour) {
+      toast.error('Cannot book a meeting in the past');
+      return;
+    }
+
+    const cellEnd = new Date(day);
+    cellEnd.setHours(hour + 1, 0, 0, 0);
+
+    setBookingInitialData({
+      room: room,
+      start_time: cellStart.toISOString(),
+      end_time: cellEnd.toISOString(),
+    });
+    setIsBookingOpen(true);
+  };
 
   return (
     <div className="glass-card rounded-xl overflow-hidden shadow-2xl">
@@ -32,7 +59,7 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
             <ChevronLeft className="w-4 h-4" />
           </Button>
           <span className="text-sm font-medium min-w-[160px] text-center">
-            {format(days[0], 'MMM d')} — {format(days[4], 'MMM d, yyyy')}
+            {format(days[0], 'MMM d')} — {format(days[5], 'MMM d, yyyy')}
           </span>
           <Button variant="ghost" size="icon" onClick={() => setCurrentDate(d => addWeeks(d, 1))}>
             <ChevronRight className="w-4 h-4" />
@@ -41,7 +68,7 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
       </div>
 
       <div className="overflow-x-auto">
-        <div className="grid grid-cols-[60px_repeat(5,1fr)] min-w-[700px]">
+        <div className="grid grid-cols-[60px_repeat(6,1fr)] min-w-[800px]">
           {/* Header row */}
           <div className="border-b border-r bg-muted/50 p-2" />
           {days.map(day => (
@@ -82,16 +109,20 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
                 return (
                   <div
                     key={`${day.toISOString()}-${hour}`}
+                    onClick={() => handleCellClick(day, hour)}
                     className={cn(
-                      'border-r border-b h-16 p-0.5 relative',
+                      'border-r border-b h-16 p-0.5 relative cursor-pointer hover:bg-primary/5 transition-colors group',
                       isSameDay(day, new Date()) && 'bg-primary/[0.02]'
                     )}
                   >
                     {cellBookings.map(b => (
                       <div
                         key={b.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
                         className={cn(
-                          'text-[10px] leading-tight px-1.5 py-0.5 rounded',
+                          'text-[10px] leading-tight px-1.5 py-0.5 rounded cursor-default relative z-10',
                           b.status === 'confirmed'
                             ? 'bg-success/15 text-success border border-success/20'
                             : 'bg-pending/15 text-pending border border-pending/20'
@@ -102,6 +133,13 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
                         <div className="truncate text-[9px] opacity-75">by {b.department}</div>
                       </div>
                     ))}
+                    {cellBookings.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">
+                          + Book
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -109,6 +147,11 @@ const WeeklyCalendar = ({ bookings, room }: WeeklyCalendarProps) => {
           ))}
         </div>
       </div>
+      <BookingForm
+        open={isBookingOpen}
+        onOpenChange={setIsBookingOpen}
+        initialData={bookingInitialData}
+      />
     </div>
   );
 };

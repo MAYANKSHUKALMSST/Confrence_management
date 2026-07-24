@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
-import { Edit2, Trash2, Plus, Users, Layout, Zap, Loader2 } from 'lucide-react';
+import { Edit2, Trash2, Plus, Users, Zap, Loader2 } from 'lucide-react';
 import { Room } from '@/lib/types';
 
 const RoomManagement = () => {
@@ -68,7 +68,6 @@ const RoomManagement = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Preview</TableHead>
               <TableHead>Room Name</TableHead>
               <TableHead>Capacity</TableHead>
               <TableHead>Equipment</TableHead>
@@ -78,15 +77,6 @@ const RoomManagement = () => {
           <TableBody>
             {rooms?.map((room) => (
               <TableRow key={room.id} className="hover:bg-white/5">
-                <TableCell>
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden border border-white/10">
-                    {room.image_url ? (
-                      <img src={room.image_url} alt={room.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <Layout className="w-5 h-5 opacity-20" />
-                    )}
-                  </div>
-                </TableCell>
                 <TableCell className="font-medium">{room.name}</TableCell>
                   <div className="flex items-center gap-1.5 text-foreground/80 font-medium text-sm">
                     <Users className="w-4 h-4 text-primary" />
@@ -128,10 +118,6 @@ const RoomManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="equipment">Equipment (comma separated)</Label>
               <Input id="equipment" placeholder="Projector, TV, Whiteboard" value={formData.equipment} onChange={e => setFormData({ ...formData, equipment: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="image_url">Image URL</Label>
-              <Input id="image_url" placeholder="/room.png" value={formData.image_url} onChange={e => setFormData({ ...formData, image_url: e.target.value })} />
             </div>
             <DialogFooter className="pt-4">
               <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancel</Button>

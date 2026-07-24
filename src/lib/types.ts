@@ -32,6 +32,9 @@ export interface Booking {
   start_time: string;
   end_time: string;
   status: BookingStatus;
+  attendee_emails?: string;
+  meeting_link?: string;
+  notes?: string;
   recurrence_id?: string;
   recurrence_rule?: string;
   created_at: string;

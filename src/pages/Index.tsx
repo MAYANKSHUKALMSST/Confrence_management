@@ -9,34 +9,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
-};
+import { useState, useEffect } from 'react';
 
 const Index = () => {
   const { bookings = [], isLoading: bookingsLoading, updateBookingStatus } = useBookings();
   const { rooms = [], isLoading: roomsLoading } = useRooms();
   const { isAdmin } = useAuth();
+  const [activeRoom, setActiveRoom] = useState<string | null>(null);
 
   const isLoading = bookingsLoading || roomsLoading;
 
-  const pendingBookings = bookings.filter(b => b.status === 'pending');
+
+  // Set first room as default active tab once rooms load
+  useEffect(() => {
+    if (rooms.length > 0 && !activeRoom) {
+      setActiveRoom(rooms[0].name);
+    }
+  }, [rooms]);
 
   return (
     <AppLayout>
       <div className="animate-fade-in">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6 bg-background/20 backdrop-blur-sm p-4 rounded-xl border border-white/5">
           <div>
             <h1 className="text-3xl font-heading font-bold text-foreground">Dashboard</h1>
@@ -45,95 +39,57 @@ const Index = () => {
           <BookingForm />
         </div>
 
-        {isAdmin && pendingBookings.length > 0 && (
-          <div className="mb-6">
-            <h2 className="font-heading font-semibold text-lg mb-3">
-              Pending Approvals ({pendingBookings.length})
-            </h2>
-            <div className="bg-card rounded-xl border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pendingBookings.map(b => (
-                    <TableRow key={b.id}>
-                      <TableCell>{b.room}</TableCell>
-                      <TableCell>{b.title}</TableCell>
-                      <TableCell>{b.department}</TableCell>
-                      <TableCell>
-                        {(() => {
-                          try {
-                            const d = new Date(b.start_time);
-                            return isNaN(d.getTime()) ? 'Invalid Date' : format(d, 'MMM d, yyyy');
-                          } catch { return 'Invalid Date'; }
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {(() => {
-                          try {
-                            const s = new Date(b.start_time);
-                            const e = new Date(b.end_time);
-                            if (isNaN(s.getTime()) || isNaN(e.getTime())) return 'Invalid Range';
-                            return `${format(s, 'h:mm a')} – ${format(e, 'h:mm a')}`;
-                          } catch { return 'Invalid Range'; }
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            className="gap-1 bg-success hover:bg-success/90 text-success-foreground"
-                            onClick={() => updateBookingStatus.mutate({ id: b.id, status: 'confirmed' })}
-                            disabled={updateBookingStatus.isPending}
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="gap-1"
-                            onClick={() => updateBookingStatus.mutate({ id: b.id, status: 'rejected' })}
-                            disabled={updateBookingStatus.isPending}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            Reject
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
-
+        {/* Room Calendar Tabs */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
           </div>
         ) : (
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="space-y-6"
-          >
-            {Array.isArray(rooms) && rooms.map(room => (
-              <motion.div key={room.id} variants={itemVariants}>
-                <WeeklyCalendar bookings={bookings || []} room={room.name} />
-              </motion.div>
-            ))}
-          </motion.div>
+          <div>
+            {/* Tab Buttons */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {Array.isArray(rooms) && rooms.map(room => (
+                <button
+                  key={room.id}
+                  onClick={() => setActiveRoom(room.name)}
+                  className={`
+                    relative px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300
+                    ${activeRoom === room.name
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/30 scale-105'
+                      : 'bg-card text-muted-foreground hover:text-foreground hover:bg-card/80 border border-white/5'
+                    }
+                  `}
+                >
+                  {room.name}
+                  {activeRoom === room.name && (
+                    <motion.span
+                      layoutId="active-tab-indicator"
+                      className="absolute inset-0 rounded-xl bg-primary/10"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Active Calendar Panel */}
+            <AnimatePresence mode="wait">
+              {Array.isArray(rooms) && rooms
+                .filter(room => room.name === activeRoom)
+                .map(room => (
+                  <motion.div
+                    key={room.name}
+                    initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -16, scale: 0.98 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
+                    <WeeklyCalendar bookings={bookings || []} room={room.name} />
+                  </motion.div>
+                ))
+              }
+            </AnimatePresence>
+          </div>
         )}
       </div>
     </AppLayout>
@@ -141,3 +97,5 @@ const Index = () => {
 };
 
 export default Index;
+
+

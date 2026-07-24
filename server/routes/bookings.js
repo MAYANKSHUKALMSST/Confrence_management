@@ -112,7 +112,7 @@ const hasOverlap = (room, start, end, excludeId = null) => {
 
 router.post('/', authenticateToken, bookingLimiter, (req, res) => {
   try {
-    let { room, title, department, attendees, start_time, end_time } = req.body;
+    let { room, title, department, attendees, attendee_emails, meeting_link, notes, start_time, end_time } = req.body;
     const user = req.user;
 
     // Time Validation
@@ -135,6 +135,11 @@ router.post('/', authenticateToken, bookingLimiter, (req, res) => {
     title = sanitizeHtml(title, sanitizeOptions);
     department = sanitizeHtml(department, sanitizeOptions);
     attendees = sanitizeHtml(attendees || '', sanitizeOptions);
+    meeting_link = sanitizeHtml(meeting_link || '', sanitizeOptions);
+    notes = sanitizeHtml(notes || '', sanitizeOptions);
+    // Sanitize and validate attendee emails
+    const rawEmails = (attendee_emails || '').split(',').map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    attendee_emails = rawEmails.join(',');
 
     if (!room || !title || !department || !start_time || !end_time) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -200,8 +205,8 @@ router.post('/', authenticateToken, bookingLimiter, (req, res) => {
 
       const id = randomUUID();
       db.run(
-        'INSERT INTO bookings (id, user_id, room, title, department, attendees, start_time, end_time, status, created_at, updated_at, recurrence_id, recurrence_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [id, user.id, room, title, department, attendees || '', bTime.start, bTime.end, 'pending', now, now, recurrence_id, recurrence_rule || null]
+        'INSERT INTO bookings (id, user_id, room, title, department, attendees, attendee_emails, meeting_link, notes, start_time, end_time, status, created_at, updated_at, recurrence_id, recurrence_rule) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [id, user.id, room, title, department, attendees || '', attendee_emails || '', meeting_link || '', notes || '', bTime.start, bTime.end, 'confirmed', now, now, recurrence_id, recurrence_rule || null]
       );
       createdBookings.push(db.get('SELECT * FROM bookings WHERE id = ?', [id]));
     }
@@ -221,19 +226,55 @@ router.post('/', authenticateToken, bookingLimiter, (req, res) => {
     
     sendEmail({
       to: user.email,
-      subject: `Booking Request: ${booking.title}`,
-      text: `Hello ${user.full_name},\n\nYour booking request for "${booking.title}" in room "${booking.room}" has been received and is currently pending approval.\n\nDetails:\n- Room: ${booking.room}\n- Time: ${startStr} - ${endStr}\n- Status: Pending\n\nWe will notify you once it's reviewed.\n\nBest regards,\nRoom Booking System`,
+      subject: `Booking Confirmed: ${booking.title}`,
+      text: `Hello ${user.full_name},\n\nYour booking for "${booking.title}" in room "${booking.room}" is confirmed.\n\nDetails:\n- Room: ${booking.room}\n- Time: ${startStr} - ${endStr}\n${booking.meeting_link ? `- Link: ${booking.meeting_link}\n` : ''}${booking.notes ? `- Note: ${booking.notes}\n` : ''}- Status: Confirmed\n\nBest regards,\nRoom Booking System`,
       html: `
         <h3>Hello ${user.full_name},</h3>
-        <p>Your booking request for <strong>"${booking.title}"</strong> in room <strong>"${booking.room}"</strong> has been received and is currently pending approval.</p>
+        <p>Your booking for <strong>"${booking.title}"</strong> in room <strong>"${booking.room}"</strong> is <strong>confirmed</strong>.</p>
         <p><strong>Details:</strong><br>
         - <strong>Room:</strong> ${booking.room}<br>
         - <strong>Time:</strong> ${startStr} - ${endStr}<br>
-        - <strong>Status:</strong> Pending</p>
-        <p>We will notify you once it's reviewed.</p>
+        ${booking.meeting_link ? `- <strong>Meeting Link:</strong> <a href="${booking.meeting_link}">${booking.meeting_link}</a><br>` : ''}
+        ${booking.notes ? `- <strong>Note:</strong> ${booking.notes}<br>` : ''}
+        - <strong>Status:</strong> Confirmed</p>
         <p>Best regards,<br>Room Booking System</p>
       `
-    }).catch(err => console.error('Failed to send booking creation email:', err));
+    }).catch(err => console.error('Failed to send booking confirmation email:', err));
+
+    // Send invites to all attendees
+    if (booking.attendee_emails) {
+      const attendeeList = booking.attendee_emails.split(',').map(e => e.trim()).filter(Boolean);
+      for (const attendeeEmail of attendeeList) {
+        sendEmail({
+          to: attendeeEmail,
+          subject: `Meeting Invite: ${booking.title}`,
+          text: `Hello,\n\nYou have been invited to the following meeting:\n\n📅 ${booking.title}\n🏢 Room: ${booking.room}\n⏰ Time: ${startStr} - ${endStr}\n${booking.meeting_link ? `🔗 Link: ${booking.meeting_link}\n` : ''}${booking.notes ? `📝 Note: ${booking.notes}\n` : ''}👤 Organizer: ${user.full_name}\n\nPlease make a note of this in your calendar.\n\nBest regards,\nRoom Booking System`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 20px; color: white;">
+                <h2 style="margin: 0;">📅 Meeting Invite</h2>
+                <p style="margin: 5px 0 0; opacity: 0.9;">You have been invited to a meeting</p>
+              </div>
+              <div style="padding: 24px;">
+                <h3 style="margin-top: 0; color: #1a1a2e;">${booking.title}</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr><td style="padding: 8px 0; color: #666; width: 110px;">🏢 Room</td><td style="padding: 8px 0; font-weight: 600;">${booking.room}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #666;">⏰ Time</td><td style="padding: 8px 0; font-weight: 600;">${startStr} – ${endStr}</td></tr>
+                  ${booking.meeting_link ? `<tr><td style="padding: 8px 0; color: #666;">🔗 Meeting Link</td><td style="padding: 8px 0; font-weight: 600;"><a href="${booking.meeting_link}">${booking.meeting_link}</a></td></tr>` : ''}
+                  ${booking.notes ? `<tr><td style="padding: 8px 0; color: #666;">📝 Note</td><td style="padding: 8px 0; font-weight: 600;">${booking.notes}</td></tr>` : ''}
+                  <tr><td style="padding: 8px 0; color: #666;">👤 Organizer</td><td style="padding: 8px 0; font-weight: 600;">${user.full_name}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #666;">🏷️ Department</td><td style="padding: 8px 0; font-weight: 600;">${department}</td></tr>
+                </table>
+                <p style="margin-top: 16px; color: #555;">Please make a note of this in your calendar.</p>
+              </div>
+              <div style="background: #f8f8f8; padding: 12px 24px; font-size: 12px; color: #999;">
+                This email was sent by the Room Booking System.
+              </div>
+            </div>
+          `
+        }).catch(err => console.error(`Failed to send invite to ${attendeeEmail}:`, err));
+      }
+    }
 
     res.json(booking);
   } catch (err) {
@@ -285,25 +326,63 @@ router.patch('/:id/status', authenticateToken, (req, res) => {
     const updated = db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
     const requester = db.get('SELECT email, full_name FROM users WHERE id = ?', [booking.user_id]);
 
-    if (requester) {
-      const startStr = format(new Date(booking.start_time), 'PPP p');
-      const endStr = format(new Date(booking.end_time), 'p');
-      const statusTitle = status === 'confirmed' ? 'Approved' : 'Rejected';
+    const startStr = format(new Date(booking.start_time), 'PPP p');
+    const endStr = format(new Date(booking.end_time), 'p');
+    const statusTitle = status === 'confirmed' ? 'Approved' : 'Rejected';
 
+    // 1. Email the booking owner (requester)
+    if (requester) {
       sendEmail({
         to: requester.email,
         subject: `Booking ${statusTitle}: ${booking.title}`,
-        text: `Hello ${requester.full_name},\n\nYour booking request for "${booking.title}" in room "${booking.room}" has been ${status === 'confirmed' ? 'approved' : 'rejected'}.\n\nDetails:\n- Room: ${booking.room}\n- Time: ${startStr} - ${endStr}\n- Status: ${statusTitle}\n\nBest regards,\nRoom Booking System`,
+        text: `Hello ${requester.full_name},\n\nYour booking request for "${booking.title}" in room "${booking.room}" has been ${status === 'confirmed' ? 'approved' : 'rejected'}.\n\nDetails:\n- Room: ${booking.room}\n- Time: ${startStr} - ${endStr}\n${booking.meeting_link ? `- Link: ${booking.meeting_link}\n` : ''}${booking.notes ? `- Note: ${booking.notes}\n` : ''}- Status: ${statusTitle}\n\nBest regards,\nRoom Booking System`,
         html: `
           <h3>Hello ${requester.full_name},</h3>
           <p>Your booking request for <strong>"${booking.title}"</strong> in room <strong>"${booking.room}"</strong> has been <strong>${status === 'confirmed' ? 'approved' : 'rejected'}</strong>.</p>
           <p><strong>Details:</strong><br>
           - <strong>Room:</strong> ${booking.room}<br>
           - <strong>Time:</strong> ${startStr} - ${endStr}<br>
+          ${booking.meeting_link ? `- <strong>Meeting Link:</strong> <a href="${booking.meeting_link}">${booking.meeting_link}</a><br>` : ''}
+          ${booking.notes ? `- <strong>Note:</strong> ${booking.notes}<br>` : ''}
           - <strong>Status:</strong> ${statusTitle}</p>
           <p>Best regards,<br>Room Booking System</p>
         `
-      }).catch(err => console.error('Failed to send status update email:', err));
+      }).catch(err => console.error('Failed to send status update email to requester:', err));
+    }
+
+    // 2. If CONFIRMED, also email all attendees
+    if (status === 'confirmed' && booking.attendee_emails) {
+      const attendeeList = booking.attendee_emails.split(',').map(e => e.trim()).filter(Boolean);
+      for (const attendeeEmail of attendeeList) {
+        sendEmail({
+          to: attendeeEmail,
+          subject: `Meeting Invite: ${booking.title}`,
+          text: `Hello,\n\nYou have been invited to the following meeting:\n\n📅 ${booking.title}\n🏢 Room: ${booking.room}\n⏰ Time: ${startStr} - ${endStr}\n${booking.meeting_link ? `🔗 Link: ${booking.meeting_link}\n` : ''}${booking.notes ? `📝 Note: ${booking.notes}\n` : ''}👤 Organizer: ${requester?.full_name || 'N/A'}\n\nPlease make a note of this in your calendar.\n\nBest regards,\nRoom Booking System`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 20px; color: white;">
+                <h2 style="margin: 0;">📅 Meeting Invite</h2>
+                <p style="margin: 5px 0 0; opacity: 0.9;">You have been invited to a meeting</p>
+              </div>
+              <div style="padding: 24px;">
+                <h3 style="margin-top: 0; color: #1a1a2e;">${booking.title}</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr><td style="padding: 8px 0; color: #666; width: 110px;">🏢 Room</td><td style="padding: 8px 0; font-weight: 600;">${booking.room}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #666;">⏰ Time</td><td style="padding: 8px 0; font-weight: 600;">${startStr} – ${endStr}</td></tr>
+                  ${booking.meeting_link ? `<tr><td style="padding: 8px 0; color: #666;">🔗 Meeting Link</td><td style="padding: 8px 0; font-weight: 600;"><a href="${booking.meeting_link}">${booking.meeting_link}</a></td></tr>` : ''}
+                  ${booking.notes ? `<tr><td style="padding: 8px 0; color: #666;">📝 Note</td><td style="padding: 8px 0; font-weight: 600;">${booking.notes}</td></tr>` : ''}
+                  <tr><td style="padding: 8px 0; color: #666;">👤 Organizer</td><td style="padding: 8px 0; font-weight: 600;">${requester?.full_name || 'N/A'}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #666;">🏷️ Department</td><td style="padding: 8px 0; font-weight: 600;">${booking.department}</td></tr>
+                </table>
+                <p style="margin-top: 16px; color: #555;">Please make a note of this in your calendar.</p>
+              </div>
+              <div style="background: #f8f8f8; padding: 12px 24px; font-size: 12px; color: #999;">
+                This email was sent by the Room Booking System.
+              </div>
+            </div>
+          `
+        }).catch(err => console.error(`Failed to send invite to ${attendeeEmail}:`, err));
+      }
     }
 
     res.json(updated);
@@ -319,7 +398,7 @@ router.patch('/:id/status', authenticateToken, (req, res) => {
 router.put('/:id', authenticateToken, (req, res) => {
   try {
     const user = req.user;
-    let { room, title, department, attendees, start_time, end_time } = req.body;
+    let { room, title, department, attendees, attendee_emails, meeting_link, notes, start_time, end_time } = req.body;
 
     // Sanitization
     const sanitizeOptions = { allowedTags: [], allowedAttributes: {} };
@@ -327,6 +406,10 @@ router.put('/:id', authenticateToken, (req, res) => {
     title = sanitizeHtml(title, sanitizeOptions);
     department = sanitizeHtml(department, sanitizeOptions);
     attendees = sanitizeHtml(attendees || '', sanitizeOptions);
+    meeting_link = sanitizeHtml(meeting_link || '', sanitizeOptions);
+    notes = sanitizeHtml(notes || '', sanitizeOptions);
+    const rawEmailsPut = (attendee_emails || '').split(',').map(e => e.trim()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    attendee_emails = rawEmailsPut.join(',');
 
     if (!room || !title || !department || !start_time || !end_time) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -342,10 +425,10 @@ router.put('/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Status Lockdown: If a user modifies a confirmed/rejected booking, reset to pending
+    // Status Lockdown: If a user modifies a confirmed/rejected booking, keep it as confirmed
     let newStatus = booking.status;
     if (user.role !== 'admin' && (booking.room !== room || booking.start_time !== start_time || booking.end_time !== end_time)) {
-      newStatus = 'pending';
+      newStatus = 'confirmed';
     }
 
     // Overlap Check (Excluding self)
@@ -355,8 +438,8 @@ router.put('/:id', authenticateToken, (req, res) => {
 
     const now = new Date().toISOString();
     db.run(
-      'UPDATE bookings SET room = ?, title = ?, department = ?, attendees = ?, start_time = ?, end_time = ?, status = ?, updated_at = ? WHERE id = ?',
-      [room, title, department, attendees || '', start_time, end_time, newStatus, now, req.params.id]
+      'UPDATE bookings SET room = ?, title = ?, department = ?, attendees = ?, attendee_emails = ?, meeting_link = ?, notes = ?, start_time = ?, end_time = ?, status = ?, updated_at = ? WHERE id = ?',
+      [room, title, department, attendees || '', attendee_emails || '', meeting_link || '', notes || '', start_time, end_time, newStatus, now, req.params.id]
     );
 
     const updated = db.get('SELECT * FROM bookings WHERE id = ?', [req.params.id]);

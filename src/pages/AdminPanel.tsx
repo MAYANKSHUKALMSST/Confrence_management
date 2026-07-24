@@ -16,7 +16,8 @@ import { useState, useEffect } from 'react';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import RoomManagement from '@/components/RoomManagement';
 import UserManagement from '@/components/UserManagement';
-import { BarChart3, Building, Users } from 'lucide-react';
+import MaintenancePanel from '@/components/MaintenancePanel';
+import { BarChart3, Building, Users, Shield } from 'lucide-react';
 
 const AdminPanel = () => {
   const { isAdmin } = useAuth();
@@ -24,8 +25,7 @@ const AdminPanel = () => {
 
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const pendingBookings = bookings.filter(b => b.status === 'pending');
-  const otherBookings = bookings.filter(b => b.status !== 'pending');
+  const allBookings = bookings;
 
   return (
     <AppLayout>
@@ -57,91 +57,16 @@ const AdminPanel = () => {
               <Settings className="w-4 h-4" />
               Email Settings
             </TabsTrigger>
+            <TabsTrigger value="maintenance" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2 py-2">
+              <Shield className="w-4 h-4" />
+              Maintenance
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="bookings" className="space-y-6">
-            {/* Pending Requests */}
-          <div>
-            <h2 className="font-heading font-semibold text-lg mb-3">
-              Pending Requests ({pendingBookings.length})
-            </h2>
-            {pendingBookings.length === 0 ? (
-              <div className="bg-card rounded-xl border p-8 text-center text-muted-foreground">
-                No pending requests
-              </div>
-            ) : (
-              <div className="bg-card rounded-xl border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Requester</TableHead>
-                      <TableHead>Room</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingBookings.map(b => (
-                      <TableRow key={b.id}>
-                        <TableCell className="font-medium">{b.profiles?.full_name || '—'}</TableCell>
-                        <TableCell>{b.room}</TableCell>
-                        <TableCell>{b.title}</TableCell>
-                        <TableCell>{b.department}</TableCell>
-                        <TableCell>
-                          {(() => {
-                            try {
-                              const d = new Date(b.start_time);
-                              return isNaN(d.getTime()) ? 'Invalid Date' : format(d, 'MMM d, yyyy');
-                            } catch { return 'Invalid Date'; }
-                          })()}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {(() => {
-                            try {
-                              const s = new Date(b.start_time);
-                              const e = new Date(b.end_time);
-                              if (isNaN(s.getTime()) || isNaN(e.getTime())) return 'Invalid Range';
-                              return `${format(s, 'h:mm a')} – ${format(e, 'h:mm a')}`;
-                            } catch { return 'Invalid Range'; }
-                          })()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              className="gap-1 bg-success hover:bg-success/90 text-success-foreground"
-                              onClick={() => updateBookingStatus.mutate({ id: b.id, status: 'confirmed' })}
-                              disabled={updateBookingStatus.isPending}
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="gap-1"
-                              onClick={() => updateBookingStatus.mutate({ id: b.id, status: 'rejected' })}
-                              disabled={updateBookingStatus.isPending}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              Reject
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
-
-          {/* All Bookings */}
-          <div>
-            <h2 className="font-heading font-semibold text-lg mb-3">All Bookings</h2>
+            {/* All Bookings */}
+            <div>
+              <h2 className="font-heading font-semibold text-lg mb-3">All Bookings</h2>
             <div className="bg-card rounded-xl border overflow-hidden">
               <Table>
                 <TableHeader>
@@ -161,12 +86,12 @@ const AdminPanel = () => {
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8">Loading...</TableCell>
                     </TableRow>
-                  ) : otherBookings.length === 0 ? (
+                  ) : allBookings.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No bookings</TableCell>
                     </TableRow>
                   ) : (
-                    otherBookings.map(b => (
+                    allBookings.map(b => (
                       <TableRow key={b.id}>
                         <TableCell className="font-medium">{b.profiles?.full_name || '—'}</TableCell>
                         <TableCell>{b.room}</TableCell>
@@ -241,6 +166,10 @@ const AdminPanel = () => {
 
           <TabsContent value="users">
             <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="maintenance">
+            <MaintenancePanel />
           </TabsContent>
         </Tabs>
       </div>

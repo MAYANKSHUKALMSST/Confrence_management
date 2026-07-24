@@ -19,6 +19,7 @@ import emailSettingsRoutes from './routes/email-settings.js';
 import roomRoutes from './routes/rooms.js';
 import analyticsRoutes from './routes/analytics.js';
 import userRoutes from './routes/users.js';
+import maintenanceRoutes from './routes/maintenance.js';
 import syncRoutes, { startSyncTimer, setupInstantSync } from './routes/sync.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -96,6 +97,7 @@ app.use('/api/email-settings', emailSettingsRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/sync', syncRoutes);
 
 // ── Serve frontend in production ───────────────────────────────────────────

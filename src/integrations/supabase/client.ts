@@ -140,4 +140,7 @@ export const api = {
       request(`/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
     delete: (id: string) => request(`/users/${id}`, { method: 'DELETE' }),
   },
+  maintenance: {
+    getStatus: () => request('/maintenance/status'),
+  }
 };

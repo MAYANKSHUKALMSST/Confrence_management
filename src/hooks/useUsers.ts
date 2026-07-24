@@ -67,6 +67,7 @@ export const useUsers = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
       toast.success('User deleted successfully');
     },
     onError: (error: any) => {

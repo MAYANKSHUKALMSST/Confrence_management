@@ -81,7 +81,8 @@ router.post('/signup', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
 
 // ── Sign In ────────────────────────────────────────────────────────────────
 
-router.post('/signin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'Too many login attempts, try later.' }), async (req, res) => {
+router.post('/signin', async (req, res) => {
+  console.log('🔑 Login attempt starting for:', req.body.email);
   try {
     const allowedKeys = ['email', 'password'];
     const extraKeys = Object.keys(req.body).filter(k => !allowedKeys.includes(k));
@@ -97,13 +98,17 @@ router.post('/signin', rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: 'T
 
     const user = db.get('SELECT * FROM users WHERE email = ?', [email]);
     if (!user) {
+      console.log('❌ Login failed: User not found:', email);
       return res.status(400).json({ error: 'Invalid login credentials' });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
+      console.log('❌ Login failed: Invalid password for:', email);
       return res.status(400).json({ error: 'Invalid login credentials' });
     }
+
+    console.log('✅ Login successful for:', email, 'Role:', user.role);
 
     const secret = getSecret();
     const token = jwt.sign({ userId: user.id }, secret, { expiresIn: TOKEN_EXPIRY, algorithm: 'HS256' });

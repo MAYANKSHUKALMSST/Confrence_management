@@ -3,7 +3,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 import { Building2, Calendar, ClipboardList, LogOut, Shield } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { NavLink } from 'react-router-dom';
 import ProfileSettings from '@/components/ProfileSettings';
 import { cn } from '@/lib/utils';
@@ -27,11 +26,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   ];
 
   return (
-    <div 
-      className="min-h-screen flex bg-cover bg-center bg-fixed bg-no-repeat"
-      style={{ backgroundImage: 'url("/bg.png")' }}
-    >
-      <div className="fixed inset-0 bg-background/50 backdrop-blur-sm z-[-1]"></div>
+    <div className="min-h-screen flex bg-background w-full">
 
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar/90 backdrop-blur-md text-sidebar-foreground flex flex-col fixed h-full z-10 border-r border-border/20 shadow-xl">
@@ -97,7 +92,6 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       {/* Main Content */}
       <div className="flex-1 ml-64 flex flex-col z-10">
         <header className="flex items-center justify-end px-6 py-3 border-b border-border/10 bg-card/60 backdrop-blur-md gap-3">
-          <ThemeToggle />
           <NotificationBell />
         </header>
         <main className="flex-1 p-6">

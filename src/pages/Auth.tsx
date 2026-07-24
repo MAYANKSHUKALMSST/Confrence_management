@@ -53,13 +53,8 @@ const Auth = () => {
   };
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center bg-cover bg-center bg-fixed bg-no-repeat relative"
-      style={{ backgroundImage: 'url("/bg.png")' }}
-    >
-      <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-0"></div>
-      
-      <div className="w-full max-w-md animate-fade-in relative z-10 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background w-full">
+      <div className="w-full max-w-md animate-fade-in p-4">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary mb-4">
             <Building2 className="w-7 h-7 text-primary-foreground" />
