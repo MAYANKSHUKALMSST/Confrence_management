@@ -21,9 +21,9 @@ router.get('/', authenticateToken, (req, res) => {
       WHERE b.status = 'confirmed'
     `);
 
-    // Filter out "Banyan" and "Banayan" from the analytics
-    const rooms = allRooms.filter(r => r.name.toLowerCase() !== 'banyan' && r.name.toLowerCase() !== 'banayan');
-    const bookings = allBookings.filter(b => b.room.toLowerCase() !== 'banyan' && b.room.toLowerCase() !== 'banayan');
+    // Filter out "Banyan" from the analytics (preserving active "Banayan" room)
+    const rooms = allRooms.filter(r => r.name.toLowerCase() !== 'banyan');
+    const bookings = allBookings.filter(b => b.room.toLowerCase() !== 'banyan');
 
     // 1. Peak Hours (Heatmap data)
     const hourCounts = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }));
