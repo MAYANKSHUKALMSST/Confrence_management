@@ -13,13 +13,17 @@ router.get('/', authenticateToken, (req, res) => {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const rooms = db.all('SELECT * FROM rooms ORDER BY name ASC');
-    const bookings = db.all(`
+    const allRooms = db.all('SELECT * FROM rooms ORDER BY name ASC');
+    const allBookings = db.all(`
       SELECT b.*, u.full_name as profile_full_name, u.email as profile_email
       FROM bookings b
       LEFT JOIN users u ON b.user_id = u.id
       WHERE b.status = 'confirmed'
     `);
+
+    // Filter out "Banyan" and "Banayan" from the analytics
+    const rooms = allRooms.filter(r => r.name.toLowerCase() !== 'banyan' && r.name.toLowerCase() !== 'banayan');
+    const bookings = allBookings.filter(b => b.room.toLowerCase() !== 'banyan' && b.room.toLowerCase() !== 'banayan');
 
     // 1. Peak Hours (Heatmap data)
     const hourCounts = Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }));
