@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -6,13 +6,17 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Calendar, DoorOpen, Clock, Award, Briefcase, FileSpreadsheet } from 'lucide-react';
+import { Loader2, Users, Calendar, DoorOpen, Clock, Award, Briefcase, FileSpreadsheet, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28'];
 
 const AnalyticsDashboard = () => {
   const { data, isLoading } = useAnalytics();
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const handleExportExcel = () => {
     if (!data) return;
@@ -94,6 +98,63 @@ const AnalyticsDashboard = () => {
     XLSX.writeFile(wb, `availa-room-analytics-${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const handleExportPDF = async () => {
+    if (!dashboardRef.current) return;
+    setIsExportingPDF(true);
+
+    try {
+      const element = dashboardRef.current;
+      const isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+      
+      const canvas = await html2canvas(element, {
+        scale: 2, // High resolution
+        useCORS: true,
+        backgroundColor: isDark ? '#0a0a0c' : '#f8fafc', // match application theme backgrounds
+        logging: false,
+        windowWidth: 1200, // force desktop layout width for clean chart scaling
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 190; // A4 size width (210mm) - 10mm margin on each side
+      const pageHeight = 297; // A4 size height
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const marginX = 10;
+      let heightLeft = imgHeight;
+      let position = 20; // Start below the page header
+
+      // PDF Title & Header
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(16);
+      pdf.setTextColor(isDark ? 240 : 15);
+      pdf.text('Room Booking Analytics Report', marginX, 12);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(isDark ? 150 : 100);
+      pdf.text(`Generated on ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()} | Availa-Room System`, marginX, 17);
+
+      // Add the content snapshot
+      pdf.addImage(imgData, 'PNG', marginX, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - position - 10);
+
+      // Multi-page layout
+      while (heightLeft >= 0) {
+        pdf.addPage();
+        position = heightLeft - imgHeight;
+        pdf.addImage(imgData, 'PNG', marginX, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`availa-room-analytics-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-20">
@@ -112,14 +173,30 @@ const AnalyticsDashboard = () => {
           <h2 className="text-xl font-bold font-heading text-foreground">Analytics Dashboard</h2>
           <p className="text-xs text-foreground/70 font-medium">Real-time room occupancy and system metrics</p>
         </div>
-        <Button onClick={handleExportExcel} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold self-start sm:self-auto">
-          <FileSpreadsheet className="w-4 h-4" />
-          Export to Excel
-        </Button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <Button onClick={handleExportExcel} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
+            <FileSpreadsheet className="w-4 h-4" />
+            Export to Excel
+          </Button>
+          <Button 
+            onClick={handleExportPDF} 
+            disabled={isExportingPDF}
+            className="gap-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold"
+          >
+            {isExportingPDF ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FileDown className="w-4 h-4" />
+            )}
+            {isExportingPDF ? 'Exporting PDF...' : 'Export to PDF'}
+          </Button>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+      {/* Captured Content Container */}
+      <div ref={dashboardRef} className="space-y-6 p-1">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <Card className="bg-card/50 backdrop-blur-md border border-white/10 shadow-xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold flex items-center gap-2 text-foreground/80">
@@ -327,6 +404,7 @@ const AnalyticsDashboard = () => {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
